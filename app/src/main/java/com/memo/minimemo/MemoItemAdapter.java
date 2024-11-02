@@ -28,17 +28,17 @@ public class MemoItemAdapter extends ArrayAdapter<MemoListItem> {
 
     @Override
     public int getCount() {
-        return memoList.size();
+        return this.memoList.size();
     }
 
     @Override
     public MemoListItem getItem(int position) {
-        return memoList.get(position);
+        return this.memoList.get(position);
     }
 
     @Override
     public long getItemId(int position) {
-        return position;
+        return this.memoList.get(position).getId();
     }
 
 

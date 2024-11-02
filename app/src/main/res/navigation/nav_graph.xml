@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/FragmentList"
-        android:name="com.memo.minimemo.MemoListView"
+        android:name="com.memo.minimemo.view.MemoListView"
         android:label="@string/list_title"
         tools:layout="@layout/fragment_list">
 
@@ -17,8 +17,8 @@
     </fragment>
     <fragment
         android:id="@+id/ContentFragment"
-        android:name="com.memo.minimemo.MemoContentView"
-        android:label="@string/second_fragment_label"
+        android:name="com.memo.minimemo.view.MemoContentView"
+        android:label=""
         tools:layout="@layout/fragment_content">
 
         <action

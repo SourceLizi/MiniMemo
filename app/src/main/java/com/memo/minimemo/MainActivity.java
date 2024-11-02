@@ -4,11 +4,16 @@ import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.util.Log;
 import android.view.View;
 
+import androidx.core.view.MenuItemCompat;
 import androidx.navigation.NavController;
+import androidx.navigation.NavDestination;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
@@ -17,11 +22,28 @@ import com.memo.minimemo.databinding.ActivityMainBinding;
 
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.SearchView;
+
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
+    private MemoItemAdapter mItemAdapter = null;
+    private  NavController m_navController;
+
+    public MemoItemAdapter getItemAdapter(){
+        return this.mItemAdapter;
+    }
+
+
+    public void createItemAdapter() {
+        if(this.mItemAdapter == null){
+            this.mItemAdapter = new MemoItemAdapter(MainActivity.this,
+                    R.layout.list_item_layout,new ArrayList<>());
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,24 +54,67 @@ public class MainActivity extends AppCompatActivity {
 
         setSupportActionBar(binding.toolbar);
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+        m_navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
+        appBarConfiguration = new AppBarConfiguration.Builder(m_navController.getGraph()).build();
+        NavigationUI.setupActionBarWithNavController(this, m_navController, appBarConfiguration);
 
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show();
-            }
-        });
+//        binding.fab.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+//                        .setAnchorView(R.id.fab)
+//                        .setAction("Action", null).show();
+//            }
+//        });
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        m_navController.addOnDestinationChangedListener(new NavController.OnDestinationChangedListener() {
+            @Override
+            public void onDestinationChanged(@NonNull NavController controller, @NonNull NavDestination destination,
+                                             @Nullable Bundle arguments) {
+                int destination_id = destination.getId();
+                Menu menu = (Menu)binding.toolbar.getMenu();
+                if(destination_id == R.id.ContentFragment){
+                    menu.findItem(R.id.action_new).setVisible(false);
+                    menu.findItem(R.id.action_search).setVisible(false);
+                }else if(destination_id == R.id.FragmentList){
+                    menu.findItem(R.id.action_new).setVisible(true);
+                    menu.findItem(R.id.action_search).setVisible(true);
+                    menu.findItem(R.id.action_save).setVisible(false);
+                }
+                //Log.i("TAG", "onDestinationChanged: id = " + destination.getId());
+            }
+        });
+
+        MenuItem searchViewItem = menu.findItem(R.id.action_search);
+        SearchView searchView = (SearchView) searchViewItem.getActionView();
+        if(searchView != null){
+            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    searchView.clearFocus();
+             /*   if(list.contains(query)){
+                    adapter.getFilter().filter(query);
+                }else{
+                    Toast.makeText(MainActivity.this, "No Match found",Toast.LENGTH_LONG).show();
+                }*/
+                    return false;
+
+                }
+
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    mItemAdapter.getFilter().filter(newText);
+                    return false;
+                }
+            });
+        }
+
+
         return true;
     }
 
@@ -60,18 +125,21 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
+//        //noinspection SimplifiableIfStatement
+//        if (id == R.id.action_settings) {
+//            return true;
+//        }
 
         return super.onOptionsItemSelected(item);
     }
+
+
 
     @Override
     public boolean onSupportNavigateUp() {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         return NavigationUI.navigateUp(navController, appBarConfiguration)
                 || super.onSupportNavigateUp();
+
     }
 }
