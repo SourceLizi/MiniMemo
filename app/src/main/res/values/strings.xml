@@ -8,6 +8,8 @@
     <string name="action_delete">Delete</string>
     <!-- Strings used for fragments for navigation -->
     <string name="list_title">备忘录</string>
+    <string name="new_title">新建备忘录</string>
+    <string name="info_text">创建于%s | %d字</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
 

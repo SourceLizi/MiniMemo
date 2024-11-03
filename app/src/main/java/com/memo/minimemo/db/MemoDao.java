@@ -26,8 +26,8 @@ public interface MemoDao {
     @Query("DELETE FROM memo_table")
     void deleteAll();
 
-    @Delete
-    void delete(MemoData data);
+    @Query("DELETE FROM memo_table WHERE uid = (:uid)")
+    void deleteById(long uid);
 
     @Update
     void update(MemoData... data);

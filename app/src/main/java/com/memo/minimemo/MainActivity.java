@@ -23,15 +23,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.memo.minimemo.databinding.ActivityMainBinding;
+import com.memo.minimemo.databinding.FragmentContentBinding;
 import com.memo.minimemo.db.MemoData;
-import com.memo.minimemo.utils.ListItemClickListener;
 
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.PopupMenu;
 import android.widget.SearchView;
-
-import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,6 +38,10 @@ public class MainActivity extends AppCompatActivity {
 
     private MemoViewModel mViewModel;
 
+    public void setDoneVisible(boolean vis){
+        Menu menu = (Menu)binding.toolbar.getMenu();
+        menu.findItem(R.id.action_save).setVisible(vis);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, m_navController, appBarConfiguration);
 
         this.mViewModel = new ViewModelProvider(this).get(MemoViewModel.class);
-
+        Log.i("TAG",this.mViewModel.toString());
 //        binding.fab.setOnClickListener(new View.OnClickListener() {
 //            @Override
 //            public void onClick(View view) {
@@ -121,12 +122,25 @@ public class MainActivity extends AppCompatActivity {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+        int menu_id = item.getItemId();
 
 //        //noinspection SimplifiableIfStatement
-//        if (id == R.id.action_settings) {
-//            return true;
-//        }
+        if (menu_id == R.id.action_new) {
+            String new_title = getResources().getString(R.string.new_title);
+            MemoData new_memo = new MemoData(new_title,"");
+            this.mViewModel.insert(new_memo);
+        }else if(menu_id == R.id.action_save){
+            MemoData editingMemo = this.mViewModel.getCurrEditing();
+            FragmentContentBinding binding1 = this.mViewModel.getContent_binding();
+            Log.i("TAG",this.mViewModel.toString());
+            if(editingMemo != null && binding1 != null){
+                editingMemo.title = binding1.textTitle.getText().toString();
+                editingMemo.content = binding1.textContent.getText().toString();
+                editingMemo.updateTime = System.currentTimeMillis();
+                this.mViewModel.update(editingMemo);
+                m_navController.navigate(R.id.action_Back2List);
+            }
+        }
 
         return super.onOptionsItemSelected(item);
     }

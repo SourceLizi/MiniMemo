@@ -37,6 +37,7 @@ public class MemoListView extends Fragment {
             public boolean onMenuItemClick(MenuItem item) {
                 int menu_id = item.getItemId();
                 if(menu_id == R.id.action_delete){
+                    mViewModel.deleteById(id);
                     Log.i("TAG","onDelClick,id=" + String.valueOf(id));
                 }else if(menu_id == R.id.action_rename_title){
                     Log.i("TAG","onRenameClick,id=" + String.valueOf(id));
