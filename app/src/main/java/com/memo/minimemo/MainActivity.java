@@ -12,16 +12,23 @@ import android.util.Log;
 import android.view.View;
 
 import androidx.core.view.MenuItemCompat;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.NavDestination;
 import androidx.navigation.Navigation;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.memo.minimemo.databinding.ActivityMainBinding;
+import com.memo.minimemo.db.MemoData;
+import com.memo.minimemo.utils.ListItemClickListener;
 
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.PopupMenu;
 import android.widget.SearchView;
 
 import java.util.ArrayList;
@@ -30,20 +37,10 @@ public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
-    private MemoItemAdapter mItemAdapter = null;
-    private  NavController m_navController;
+    private NavController m_navController;
 
-    public MemoItemAdapter getItemAdapter(){
-        return this.mItemAdapter;
-    }
+    private MemoViewModel mViewModel;
 
-
-    public void createItemAdapter() {
-        if(this.mItemAdapter == null){
-            this.mItemAdapter = new MemoItemAdapter(MainActivity.this,
-                    R.layout.list_item_layout,new ArrayList<>());
-        }
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
         m_navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         appBarConfiguration = new AppBarConfiguration.Builder(m_navController.getGraph()).build();
         NavigationUI.setupActionBarWithNavController(this, m_navController, appBarConfiguration);
+
+        this.mViewModel = new ViewModelProvider(this).get(MemoViewModel.class);
 
 //        binding.fab.setOnClickListener(new View.OnClickListener() {
 //            @Override
@@ -108,7 +107,6 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public boolean onQueryTextChange(String newText) {
-                    mItemAdapter.getFilter().filter(newText);
                     return false;
                 }
             });
