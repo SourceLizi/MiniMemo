@@ -17,7 +17,7 @@ public interface MemoDao {
     @Query("SELECT * FROM memo_table WHERE uid = (:uid)")
     LiveData<MemoData> selectById(long uid);
 
-    @Query("SELECT * FROM memo_table WHERE content LIKE :f OR title LIKE :f")
+    @Query("SELECT * FROM memo_table WHERE content LIKE '%' || (:f) || '%' OR title LIKE '%' || (:f) || '%'")
     LiveData<List<MemoData>> findByString(String f);
 
     @Insert

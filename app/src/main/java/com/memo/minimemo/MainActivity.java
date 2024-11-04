@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
     private NavController m_navController;
+    private  MenuItem searchViewItem;
 
     private MemoViewModel mViewModel;
 
@@ -57,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, m_navController, appBarConfiguration);
 
         this.mViewModel = new ViewModelProvider(this).get(MemoViewModel.class);
-        Log.i("TAG",this.mViewModel.toString());
+
 //        binding.fab.setOnClickListener(new View.OnClickListener() {
 //            @Override
 //            public void onClick(View view) {
@@ -72,6 +73,9 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        this.searchViewItem = menu.findItem(R.id.action_search);
+        SearchView searchView = (SearchView) this.searchViewItem.getActionView();
+
         m_navController.addOnDestinationChangedListener(new NavController.OnDestinationChangedListener() {
             @Override
             public void onDestinationChanged(@NonNull NavController controller, @NonNull NavDestination destination,
@@ -82,6 +86,11 @@ public class MainActivity extends AppCompatActivity {
                     menu.findItem(R.id.action_new).setVisible(false);
                     menu.findItem(R.id.action_search).setVisible(false);
                 }else if(destination_id == R.id.FragmentList){
+                    SearchView searchView = (SearchView) searchViewItem.getActionView();
+                    if(searchView != null) {
+                        searchView.clearFocus();
+                        searchView.setIconified(true);
+                    }
                     menu.findItem(R.id.action_new).setVisible(true);
                     menu.findItem(R.id.action_search).setVisible(true);
                     menu.findItem(R.id.action_save).setVisible(false);
@@ -90,22 +99,24 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        MenuItem searchViewItem = menu.findItem(R.id.action_search);
-        SearchView searchView = (SearchView) searchViewItem.getActionView();
+
+
         if(searchView != null){
+            //TODO:未实现单击搜索框外关闭
+            searchView.setOnCloseListener(new SearchView.OnCloseListener() {
+                @Override
+                public boolean onClose() {
+                    mViewModel.setDefaultData();
+                    return false;
+                }
+            });
             searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
                 @Override
                 public boolean onQueryTextSubmit(String query) {
                     searchView.clearFocus();
-             /*   if(list.contains(query)){
-                    adapter.getFilter().filter(query);
-                }else{
-                    Toast.makeText(MainActivity.this, "No Match found",Toast.LENGTH_LONG).show();
-                }*/
+                    mViewModel.find(query);
                     return false;
-
                 }
-
                 @Override
                 public boolean onQueryTextChange(String newText) {
                     return false;
@@ -123,22 +134,28 @@ public class MainActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int menu_id = item.getItemId();
-
+        Log.i("TAG","onOptionsItemSelected,id="+String.valueOf(menu_id));
 //        //noinspection SimplifiableIfStatement
-        if (menu_id == R.id.action_new) {
-            String new_title = getResources().getString(R.string.new_title);
-            MemoData new_memo = new MemoData(new_title,"");
-            this.mViewModel.insert(new_memo);
-        }else if(menu_id == R.id.action_save){
-            MemoData editingMemo = this.mViewModel.getCurrEditing();
-            FragmentContentBinding binding1 = this.mViewModel.getContent_binding();
-            Log.i("TAG",this.mViewModel.toString());
-            if(editingMemo != null && binding1 != null){
-                editingMemo.title = binding1.textTitle.getText().toString();
-                editingMemo.content = binding1.textContent.getText().toString();
-                editingMemo.updateTime = System.currentTimeMillis();
-                this.mViewModel.update(editingMemo);
-                m_navController.navigate(R.id.action_Back2List);
+        if(menu_id != R.id.action_search){
+            SearchView searchView = (SearchView) this.searchViewItem.getActionView();
+            if(searchView != null){
+                searchView.clearFocus();
+                searchView.setIconified(true);
+            }
+            if (menu_id == R.id.action_new) {
+                String new_title = getResources().getString(R.string.new_title);
+                MemoData new_memo = new MemoData(new_title,"");
+                this.mViewModel.insert(new_memo);
+            }else if(menu_id == R.id.action_save){
+                MemoData editingMemo = this.mViewModel.getCurrEditing();
+                FragmentContentBinding binding1 = this.mViewModel.getContent_binding();
+                if(editingMemo != null && binding1 != null){
+                    editingMemo.title = binding1.textTitle.getText().toString();
+                    editingMemo.content = binding1.textContent.getText().toString();
+                    editingMemo.updateTime = System.currentTimeMillis();
+                    this.mViewModel.update(editingMemo);
+                    m_navController.navigateUp();
+                }
             }
         }
 

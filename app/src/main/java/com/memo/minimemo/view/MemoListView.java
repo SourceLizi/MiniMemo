@@ -62,11 +62,19 @@ public class MemoListView extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
+        MainActivity activity = (MainActivity)getActivity();
+        if(activity != null){
+            this.mViewModel = new ViewModelProvider(activity).get(MemoViewModel.class);
+        }else{
+            this.mViewModel = new ViewModelProvider(this).get(MemoViewModel.class);
+        }
+        mViewModel.setLifecycleOwner(getViewLifecycleOwner());
 
         RecyclerView recyclerView = view.findViewById(R.id.all_memo_list);
-        final MemoListAdapter adapter = new MemoListAdapter(new MemoListAdapter.MemoDataDiff());
+        final MemoListAdapter adapter = mViewModel.getAdapter();
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.requireContext()));
+        mViewModel.setDefaultData();
 
         recyclerView.addOnItemTouchListener(new ListItemClickListener(recyclerView){
             @Override
@@ -85,47 +93,12 @@ public class MemoListView extends Fragment {
             }
         });
 
-        this.mViewModel = new ViewModelProvider(this).get(MemoViewModel.class);
-        // Update the cached copy of the words in the adapter.
-        this.mViewModel.getAll().observe(getViewLifecycleOwner(), adapter::submitList);
-
-//        Activity main_activity = getActivity();
-//        if (main_activity instanceof MainActivity ){
-//            this.m_mainActivity = (MainActivity)main_activity;
-//            this.m_mainActivity.createItemAdapter();
-//            this.mItemAdapter = this.m_mainActivity.getItemAdapter();
-//
-//            binding.allMemoList.setAdapter(this.mItemAdapter);
-//            for (int i = 0; i < 20; i++) {
-//                this.mItemAdapter.add(new MemoListItem(i,"标题"+i,"这是一个条目"));
-//            }
-//        }
-//
-//        binding.allMemoList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-//            @Override
-//            public void onItemClick(AdapterView<?> arg0, View arg1, int position, long id) {
-//                Bundle bundle = new Bundle();
-//                bundle.putLong("id",id);
-//                NavHostFragment.findNavController(MemoListView.this)
-//                        .navigate(R.id.action_OpenDetail,bundle);
-//
-//            }
-//        });
-//        binding.allMemoList.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-//            @Override
-//            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-//                showPopupMenu(view,position);
-//                return true;
-//            }
-//        });
-
-
-
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        mViewModel.setLifecycleOwner(null);
         binding = null;
     }
 

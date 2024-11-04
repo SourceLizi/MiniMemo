@@ -10,10 +10,6 @@ public class MemoRepository {
     private MemoDao mMemoDao;
     private LiveData<List<MemoData>> mAllMemos;
 
-    // Note that in order to unit test the WordRepository, you have to remove the Application
-    // dependency. This adds complexity and much more code, and this sample is not about testing.
-    // See the BasicSample in the android-architecture-components repository at
-    // https://github.com/googlesamples
     public MemoRepository(Application application) {
         AppDatabase db = AppDatabase.getDatabase(application);
         mMemoDao = db.memoDao();
@@ -24,6 +20,12 @@ public class MemoRepository {
     // Observed LiveData will notify the observer when the data has changed.
     public LiveData<List<MemoData>> getAll() {
         return mAllMemos;
+    }
+
+    // Room executes all queries on a separate thread.
+    // Observed LiveData will notify the observer when the data has changed.
+    public LiveData<List<MemoData>> searchString(String s) {
+        return mMemoDao.findByString(s);
     }
 
     // Room executes all queries on a separate thread.
