@@ -74,6 +74,21 @@ public class MemoListView extends Fragment {
         final MemoListAdapter adapter = mViewModel.getAdapter();
         recyclerView.setAdapter(adapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this.requireContext()));
+        recyclerView.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
+            @Override
+            public void onChildViewAttachedToWindow(@NonNull View view) {
+                if(adapter.getItemCount() > 0){
+                    binding.emptyText.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onChildViewDetachedFromWindow(@NonNull View view) {
+                if(adapter.getItemCount() == 0){
+                    binding.emptyText.setVisibility(View.VISIBLE);
+                }
+            }
+        });
         mViewModel.setDefaultData();
 
         recyclerView.addOnItemTouchListener(new ListItemClickListener(recyclerView){

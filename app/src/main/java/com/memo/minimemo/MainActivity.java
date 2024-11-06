@@ -1,9 +1,11 @@
 package com.memo.minimemo;
 
+import android.content.Context;
 import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,6 +30,7 @@ import com.memo.minimemo.db.MemoData;
 
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.SearchView;
 
 public class MainActivity extends AppCompatActivity {
@@ -35,7 +38,8 @@ public class MainActivity extends AppCompatActivity {
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
     private NavController m_navController;
-    private  MenuItem searchViewItem;
+
+    private SearchView searchView;
 
     private MemoViewModel mViewModel;
 
@@ -59,6 +63,21 @@ public class MainActivity extends AppCompatActivity {
 
         this.mViewModel = new ViewModelProvider(this).get(MemoViewModel.class);
 
+        OnBackPressedCallback callback  = new OnBackPressedCallback(true /* enabled by default */) {
+            @Override
+            public void handleOnBackPressed() {
+                // Handle the back button event
+                if(searchView != null && !searchView.isIconified()){
+                    searchView.setQuery("",false);
+                    searchView.clearFocus();
+                    searchView.setIconified(true);
+                }else{
+                    finish();
+                }
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, callback);
+
 //        binding.fab.setOnClickListener(new View.OnClickListener() {
 //            @Override
 //            public void onClick(View view) {
@@ -73,8 +92,9 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        this.searchViewItem = menu.findItem(R.id.action_search);
-        SearchView searchView = (SearchView) this.searchViewItem.getActionView();
+        MenuItem searchViewItem = menu.findItem(R.id.action_search);
+        this.searchView = (SearchView) searchViewItem.getActionView();
+
 
         m_navController.addOnDestinationChangedListener(new NavController.OnDestinationChangedListener() {
             @Override
@@ -88,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
                 }else if(destination_id == R.id.FragmentList){
                     SearchView searchView = (SearchView) searchViewItem.getActionView();
                     if(searchView != null) {
+                        searchView.setQuery("",false);
                         searchView.clearFocus();
                         searchView.setIconified(true);
                     }
@@ -99,10 +120,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
-
         if(searchView != null){
-            //TODO:未实现单击搜索框外关闭
+            searchView.setIconifiedByDefault(true);
             searchView.setOnCloseListener(new SearchView.OnCloseListener() {
                 @Override
                 public boolean onClose() {
@@ -135,10 +154,13 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int menu_id = item.getItemId();
         Log.i("TAG","onOptionsItemSelected,id="+String.valueOf(menu_id));
-//        //noinspection SimplifiableIfStatement
+
         if(menu_id != R.id.action_search){
-            SearchView searchView = (SearchView) this.searchViewItem.getActionView();
-            if(searchView != null){
+            if(this.searchView != null){
+                InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(searchView.getWindowToken(),0);
+
+                searchView.setQuery("",false);
                 searchView.clearFocus();
                 searchView.setIconified(true);
             }
@@ -146,15 +168,26 @@ public class MainActivity extends AppCompatActivity {
                 String new_title = getResources().getString(R.string.new_title);
                 MemoData new_memo = new MemoData(new_title,"");
                 this.mViewModel.insert(new_memo);
+                mViewModel.setDefaultData();
             }else if(menu_id == R.id.action_save){
                 MemoData editingMemo = this.mViewModel.getCurrEditing();
                 FragmentContentBinding binding1 = this.mViewModel.getContent_binding();
                 if(editingMemo != null && binding1 != null){
+                    binding1.textTitle.clearFocus();
+                    binding1.textContent.clearFocus();
+
+                    InputMethodManager imm = (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(binding1.textContent.getWindowToken(),0);
+                    imm.hideSoftInputFromWindow(binding1.textTitle.getWindowToken(),0);
+
                     editingMemo.title = binding1.textTitle.getText().toString();
                     editingMemo.content = binding1.textContent.getText().toString();
                     editingMemo.updateTime = System.currentTimeMillis();
                     this.mViewModel.update(editingMemo);
-                    m_navController.navigateUp();
+
+                    Menu menu = (Menu)binding.toolbar.getMenu();
+                    menu.findItem(R.id.action_save).setVisible(false);
+                    //m_navController.navigateUp();
                 }
             }
         }
