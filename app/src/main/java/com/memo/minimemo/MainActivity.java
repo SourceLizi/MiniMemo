@@ -1,6 +1,7 @@
 package com.memo.minimemo;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
@@ -27,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.memo.minimemo.databinding.ActivityMainBinding;
 import com.memo.minimemo.databinding.FragmentContentBinding;
 import com.memo.minimemo.db.MemoData;
+import com.memo.minimemo.transcribe.WhisperService;
 
 import android.view.Menu;
 import android.view.MenuItem;
@@ -77,7 +79,8 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         getOnBackPressedDispatcher().addCallback(this, callback);
-
+        WhisperService service = new WhisperService();
+        service.loadModel(getApplication());
 //        binding.fab.setOnClickListener(new View.OnClickListener() {
 //            @Override
 //            public void onClick(View view) {
