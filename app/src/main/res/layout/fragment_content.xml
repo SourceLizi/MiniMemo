@@ -13,21 +13,37 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
         <EditText
             android:id="@+id/text_title"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="0.5"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="15dp"
             android:autofillHints=""
             android:background="@null"
             android:inputType="textNoSuggestions"
             android:text=""
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
+            android:textSize="25sp"
             app:layout_constraintBottom_toTopOf="@+id/text_info"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="15dp"
-            android:textSize="25sp"/>
+            app:layout_constraintEnd_toStartOf="@+id/button_voice"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
+        <ImageButton
+            android:id="@+id/button_voice"
+            app:layout_constraintStart_toEndOf="@+id/text_title"
+            app:layout_constraintEnd_toEndOf="parent"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="30dp"
+            android:layout_height="wrap_content"
+            android:contentDescription="Record"
+            android:src="@drawable/ic_action_voice_off" />
+    </LinearLayout>
         <TextView
             android:id="@+id/text_info"
             app:layout_constraintEnd_toEndOf="parent"
@@ -43,7 +59,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:autofillHints=""
-            android:inputType="textNoSuggestions"
+            android:inputType="textMultiLine"
             android:background="@null"
             android:text=""
             android:gravity="top"

@@ -3,6 +3,7 @@
 #include <android/asset_manager_jni.h>
 #include <android/log.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/sysinfo.h>
 #include <string.h>
 #include "whisper.h"
@@ -185,6 +186,7 @@ Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
     whisper_reset_timings(context);
 
     LOGI("About to run whisper_full");
+    //int n_core = sysconf(_SC_NPROCESSORS_ONLN);
     if (whisper_full(context, params, audio_data_arr, audio_data_length) != 0) {
         LOGI("Failed to run the model");
     } else {

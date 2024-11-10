@@ -4,15 +4,18 @@ import android.app.Application;
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
+import android.text.Editable;
 import android.util.Log;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
-
 import com.memo.minimemo.entity.WhisperSegment;
 import com.memo.minimemo.transcribe.LocalWhisper;
 import com.memo.minimemo.transcribe.WaveEncoder;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 import java.io.File;
@@ -21,65 +24,73 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 public class WhisperService {
-  private final Object lock = new Object();
+  private boolean isLoad = false;
+  private final ExecutorService executor;
+
+  public WhisperService(Application context) {
+    this.executor = Executors.newFixedThreadPool(2);
+    loadModel(context);
+  }
 
   public void loadModel(Application context) {
-    String modelFilePath = LocalWhisper.modelFilePath;
-    String msg = "load model from :" + modelFilePath + "\n";
-    Log.i("Whisper",msg);
+    this.executor.submit(() -> {
+      if(isLoad) return;
+      String modelFilePath = LocalWhisper.modelFilePath;
+      Log.i("Whisper", "load model from :" + modelFilePath + "\n");
 
-    long start = System.currentTimeMillis();
-    LocalWhisper.INSTANCE.init(context);
-    long end = System.currentTimeMillis();
-    msg = "model load successful:" + (end - start) + "ms";
-    Log.i("Whisper",msg);
+      long start = System.currentTimeMillis();
+      LocalWhisper.INSTANCE.init(context);
+      long end = System.currentTimeMillis();
+      Log.i("Whisper", "model load successful:" + (end - start) + "ms");
+      isLoad = true;
+    });
   }
 
 
-  public void transcribeSample(File sampleFile) {
-    String msg = "";
-    msg = "transcribe file from :" + sampleFile.getAbsolutePath();
-    Log.i("Whisper",msg);
+  public CompletableFuture<String> transcribeSample(File sampleFile) {
+    CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+      if (!isLoad) return null;
 
-    Long start = System.currentTimeMillis();
-    float[] audioData = new float[0];  // 读取音频样本
-    try {
-      audioData = WaveEncoder.decodeWaveFile(sampleFile);
-    } catch (IOException e) {
-      e.printStackTrace();
-      return;
-    }
-    long end = System.currentTimeMillis();
-    msg = "decode wave file:" + (end - start) + "ms";
-    Log.i("Whisper",msg);
+      float[] audioData = new float[0];  // 读取音频样本
+      try {
+        audioData = WaveEncoder.decodeWaveFile(sampleFile);
+      } catch (IOException e) {
+        e.printStackTrace();
+        return null;
+      }
+//      start = System.currentTimeMillis();
+      String transcription = null;
+      try {
+        transcription = LocalWhisper.INSTANCE.transcribeData(audioData);
+        //transcription = LocalWhisper.INSTANCE.transcribeDataWithTime(audioData);
+        return transcription;
+      } catch (ExecutionException | InterruptedException e) {
+        e.printStackTrace();
+      }
 
-    start = System.currentTimeMillis();
-    List<WhisperSegment> transcription = null;
-    try {
-      //transcription = LocalWhisper.INSTANCE.transcribeData(audioData);
-      transcription = LocalWhisper.INSTANCE.transcribeDataWithTime(audioData);
-    } catch (ExecutionException e) {
-      e.printStackTrace();
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    end = System.currentTimeMillis();
-    if(transcription!=null){
-      Log.i("Whisper",transcription.toString());
-      msg = "Transcript successful:" + (end - start) + "ms";
-      Log.i("Whisper",msg);
+//      end = System.currentTimeMillis();
+//      if (transcription != null) {
+//        Log.i("Whisper", transcription.toString());
+//        msg = "Transcript successful:" + (end - start) + "ms";
+//        Log.i("Whisper", msg);
+//      } else {
+//        msg = "Transcript failed:" + (end - start) + "ms";
+//        Log.i("Whisper", msg);
+//      }
+      return null;
+    },this.executor);
+    return  future;
+  }
 
-      Log.i("Whisper",transcription.toString());
-
-    }else{
-      msg = "Transcript failed:" + (end - start) + "ms";
-      Log.i("Whisper",msg);
-    }
-
+  public void stopAll(){
+    executor.shutdownNow();
   }
 
 
-  public void release() {
-    //noting to do
+  @Override
+  protected void finalize() throws Throwable {
+    executor.shutdownNow();
+    LocalWhisper.INSTANCE.release();
+    super.finalize();
   }
 }

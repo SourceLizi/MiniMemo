@@ -9,6 +9,7 @@ import androidx.lifecycle.LiveData;
 import com.memo.minimemo.databinding.FragmentContentBinding;
 import com.memo.minimemo.db.MemoData;
 import com.memo.minimemo.db.MemoRepository;
+import com.memo.minimemo.transcribe.WhisperService;
 
 import java.util.List;
 
@@ -21,6 +22,12 @@ public class MemoViewModel extends AndroidViewModel {
     private LifecycleOwner lifecycleOwner;
     private FragmentContentBinding content_binding;
     private MemoData currEditing;
+
+    private WhisperService service;
+
+    public WhisperService getWhisperService(){
+        return service;
+    }
 
     public MemoListAdapter getAdapter() {
         return adapter;
@@ -59,7 +66,7 @@ public class MemoViewModel extends AndroidViewModel {
         memoRepository = new MemoRepository(application);
         this.mAllMemo = memoRepository.getAll();
         this.adapter = new MemoListAdapter(new MemoListAdapter.MemoDataDiff());
-
+        this.service = new WhisperService(getApplication());
     }
 
     public void setDefaultData(){

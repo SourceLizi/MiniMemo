@@ -35,7 +35,7 @@ public class WhisperContext {
         if (ptr == 0L) {
           throw new IllegalStateException();
         }
-        int numThreads = WhisperCpuConfig.getPreferredThreadCount();
+        int numThreads = Runtime.getRuntime().availableProcessors();
         Log.d(LOG_TAG, "Selecting " + numThreads + " threads");
 
         StringBuilder result = new StringBuilder();
@@ -61,7 +61,7 @@ public class WhisperContext {
         if (ptr == 0L) {
           throw new IllegalStateException();
         }
-        int numThreads = WhisperCpuConfig.getPreferredThreadCount();
+        int numThreads = Runtime.getRuntime().availableProcessors();
         Log.d(LOG_TAG, "Selecting " + numThreads + " threads");
 
         List<WhisperSegment> segments = new ArrayList<>();

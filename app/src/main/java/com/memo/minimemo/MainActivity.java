@@ -28,12 +28,15 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.memo.minimemo.databinding.ActivityMainBinding;
 import com.memo.minimemo.databinding.FragmentContentBinding;
 import com.memo.minimemo.db.MemoData;
+import com.memo.minimemo.transcribe.AssetUtils;
 import com.memo.minimemo.transcribe.WhisperService;
 
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.SearchView;
+
+import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -44,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private SearchView searchView;
 
     private MemoViewModel mViewModel;
+
 
     public void setDoneVisible(boolean vis){
         Menu menu = (Menu)binding.toolbar.getMenu();
@@ -79,16 +83,16 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         getOnBackPressedDispatcher().addCallback(this, callback);
-        WhisperService service = new WhisperService();
-        service.loadModel(getApplication());
-//        binding.fab.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
+        binding.fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
 //                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
 //                        .setAnchorView(R.id.fab)
 //                        .setAction("Action", null).show();
-//            }
-//        });
+
+
+            }
+        });
     }
 
     @Override

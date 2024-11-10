@@ -20,8 +20,18 @@ public enum LocalWhisper {
   public static final String modelFilePath = "models/ggml-tiny-q8_0.bin";
   private WhisperContext whisperContext;
 
-  LocalWhisper() {
+  LocalWhisper() {}
 
+  public void release(){
+      try {
+        if(whisperContext != null) {
+          whisperContext.release();
+        }
+      } catch (ExecutionException e) {
+          throw new RuntimeException(e);
+      } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+      }
   }
 
   public synchronized String transcribeData(float[] data) throws ExecutionException, InterruptedException {
@@ -33,7 +43,7 @@ public enum LocalWhisper {
     }
   }
 
-    public List<WhisperSegment> transcribeDataWithTime(float[] audioData) throws ExecutionException, InterruptedException {
+  public List<WhisperSegment> transcribeDataWithTime(float[] audioData) throws ExecutionException, InterruptedException {
     if(whisperContext==null){
       Log.w("Whisper","please wait for model loading");
       return null;

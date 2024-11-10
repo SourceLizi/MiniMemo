@@ -6,10 +6,13 @@
     </style>
 
     <style name="Theme.MiniMemo" parent="Base.Theme.MiniMemo" />
+
     <style name="Theme.MiniMemo.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
+
     <style name="Theme.MiniMemo.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+
     <style name="Theme.MiniMemo.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 </resources>
