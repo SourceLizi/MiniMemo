@@ -23,6 +23,8 @@ static inline int max(int a, int b) {
     return (a > b) ? a : b;
 }
 
+static bool is_aborted = false;
+
 struct input_stream_context {
     size_t offset;
     JNIEnv * env;
@@ -162,6 +164,22 @@ Java_com_whispercpp_java_whisper_WhisperLib_freeContext(
     whisper_free(context);
 }
 
+bool whisper_abort_callback(void * user_data) {
+    bool is_aborted = *(bool*)user_data;
+    return is_aborted;
+};
+
+bool whisper_encbegin_callback(struct whisper_context * ctx, struct whisper_state * state, void * user_data) {
+    bool is_aborted = *(bool*)user_data;
+    return !is_aborted;
+};
+
+JNIEXPORT void JNICALL
+        Java_com_whispercpp_java_whisper_WhisperLib_setAbort(JNIEnv *env, jobject thiz){
+    UNUSED(thiz);
+    is_aborted = true;
+}
+
 JNIEXPORT void JNICALL
 Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
         JNIEnv *env, jobject thiz, jlong context_ptr, jint num_threads, jfloatArray audio_data) {
@@ -182,6 +200,13 @@ Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
     params.offset_ms = 0;
     params.no_context = true;
     params.single_segment = false;
+
+    params.abort_callback = whisper_abort_callback;
+    params.abort_callback_user_data = &is_aborted;
+
+    params.encoder_begin_callback = whisper_encbegin_callback;
+    params.encoder_begin_callback_user_data = &is_aborted;
+    is_aborted = false;
 
     whisper_reset_timings(context);
 

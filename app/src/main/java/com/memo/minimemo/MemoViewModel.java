@@ -1,7 +1,13 @@
 package com.memo.minimemo;
 
+import android.Manifest;
 import android.app.Application;
+import android.content.pm.PackageManager;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 
+import androidx.core.app.ActivityCompat;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LiveData;
@@ -24,6 +30,7 @@ public class MemoViewModel extends AndroidViewModel {
     private MemoData currEditing;
 
     private WhisperService service;
+    private AudioRecord audioRecord = null;
 
     public WhisperService getWhisperService(){
         return service;
@@ -59,6 +66,30 @@ public class MemoViewModel extends AndroidViewModel {
         synchronized(this) {
             this.currEditing = currEditing;
         }
+    }
+
+    public void createRecorder(){
+        if (ActivityCompat.checkSelfPermission(this.getApplication(), Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED) {
+            if(audioRecord == null){
+                audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC, WhisperService.audioSampleRate,
+                        AudioFormat.CHANNEL_IN_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        WhisperService.audioSampleRate*2*(WhisperService.audioMaxSec+1));
+            }
+        }
+    }
+
+    public void releaseRecorder(){
+        if (audioRecord != null) {
+            audioRecord.stop();
+            audioRecord.release();
+            audioRecord = null;
+        }
+    }
+
+    public AudioRecord getAudioRecord(){
+        return audioRecord;
     }
 
     public MemoViewModel(Application application){

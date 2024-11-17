@@ -1,8 +1,11 @@
 package com.memo.minimemo.view;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
+import android.media.AudioRecord;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -15,23 +18,25 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.content.res.AppCompatResources;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.swiperefreshlayout.widget.CircularProgressDrawable;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.memo.minimemo.MainActivity;
 import com.memo.minimemo.MemoViewModel;
 import com.memo.minimemo.R;
 import com.memo.minimemo.databinding.FragmentContentBinding;
 import com.memo.minimemo.db.MemoData;
-import com.memo.minimemo.transcribe.AssetUtils;
+import com.memo.minimemo.transcribe.WhisperService;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
-
+import java.util.concurrent.CompletableFuture;
 
 
 public class MemoContentView extends Fragment {
@@ -39,14 +44,17 @@ public class MemoContentView extends Fragment {
     private FragmentContentBinding binding;
     private MemoViewModel mViewModel;
     private String formatStr;
-
     private boolean isRecording = false;
+
     private CircularProgressDrawable circularProgressDrawable;
     private Drawable voice_off, voice_on;
+    private AudioRecord audioRecord;
+    CompletableFuture<String> future_recog = null;
 
     private Handler handler;
-
     static final int MSG_TRANSCRIBE_DONE = 1;
+    static final int MSG_START_REC = 2;
+    static final int MSG_STOP_REC = 3;
 
     @Override
     public View onCreateView(
@@ -108,10 +116,11 @@ public class MemoContentView extends Fragment {
             @Override
             public void afterTextChanged(Editable editable) {}
         };
+
         binding.textTitle.addTextChangedListener(watcher);
         binding.textContent.addTextChangedListener(watcher);
 
-        this.circularProgressDrawable = new CircularProgressDrawable(getContext());
+        this.circularProgressDrawable = new CircularProgressDrawable(requireContext());
         this.circularProgressDrawable.setStartEndTrim(0,300);
         this.circularProgressDrawable.setStyle(CircularProgressDrawable.DEFAULT);
         this.circularProgressDrawable.setStrokeWidth(8f);
@@ -123,52 +132,81 @@ public class MemoContentView extends Fragment {
         Context context = getActivity().getBaseContext();
         this.voice_off = AppCompatResources.getDrawable(context,R.drawable.ic_action_voice_off);
         this.voice_on = AppCompatResources.getDrawable(context,R.drawable.ic_action_voice);
+        this.audioRecord = mViewModel.getAudioRecord();
+
 
          this.handler = new Handler(msg -> {
-             switch (msg.what){
-                 case MSG_TRANSCRIBE_DONE:
+             if (msg.what == MSG_TRANSCRIBE_DONE){
+                 binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
+                 binding.textContent.append(msg.obj.toString());
+                 binding.buttonVoice.setEnabled(true);
+                 this.future_recog = null;
+             }else if(msg.what == MSG_START_REC){
+                 binding.buttonVoice.setImageDrawable(voice_on);
+             }else if(msg.what == MSG_STOP_REC){
+
+                 this.future_recog = mViewModel.getWhisperService().transcribeSample(audioRecord);
+                 if(this.future_recog == null){
                      binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
-                     binding.textContent.append(msg.obj.toString());
                      binding.buttonVoice.setEnabled(true);
-                     break;
-                 default:
-                     break;
+                 }else{
+                     this.future_recog.thenAccept(result -> {
+                         if(result != null && handler != null){
+                             Log.i("Whisper", result);
+                             Message.obtain(handler,MSG_TRANSCRIBE_DONE,result).sendToTarget();
+                         }
+                     });
+                     //binding.buttonVoice.setImageDrawable(voice_off);
+                     binding.buttonVoice.setImageDrawable(circularProgressDrawable);
+                     binding.buttonVoice.setEnabled(false);
+                 }
+
              }
             return true;
         });
 
+        if(audioRecord != null){
+            audioRecord.setNotificationMarkerPosition(WhisperService.audioSampleRate * WhisperService.audioMaxSec);
+            audioRecord.setRecordPositionUpdateListener(new AudioRecord.OnRecordPositionUpdateListener() {
+                @Override
+                public void onMarkerReached(AudioRecord audioRecord) {
+                    audioRecord.stop();
+                    isRecording = false;
+                    Message.obtain(handler,MSG_STOP_REC).sendToTarget();
+                }
+                @Override
+                public void onPeriodicNotification(AudioRecord audioRecord) {}
+            });
+        }
+
         binding.buttonVoice.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(isRecording == false){
-                    isRecording = true;
-                    binding.buttonVoice.setImageDrawable(voice_on);
+                MainActivity activity = (MainActivity)getActivity();
+                if(activity == null) return;
+                if (ActivityCompat.checkSelfPermission(
+                        activity.getApplication(), Manifest.permission.RECORD_AUDIO) !=
+                        PackageManager.PERMISSION_GRANTED) {
+                    Snackbar.make(binding.getRoot(), "语音识别需要授予权限", Snackbar.LENGTH_LONG)
+                            .setAction("授予权限", view_b -> activity.requestPermissionLauncher.launch(
+                                    Manifest.permission.RECORD_AUDIO)).show();
                 }else{
-                    isRecording = false;
-                    //binding.buttonVoice.setImageDrawable(voice_off);
-                    binding.buttonVoice.setImageDrawable(circularProgressDrawable);
-                    binding.buttonVoice.setEnabled(false);
-
-                    String sampleFilePath = "samples/jfk.wav";
-                    Context context = getActivity().getBaseContext();
-                    File filesDir = context.getFilesDir();
-                    File sampleFile = AssetUtils.copyFileIfNotExists(context, filesDir, sampleFilePath);
-                    mViewModel.getWhisperService().transcribeSample(sampleFile).thenAccept(result -> {
-                        if(result != null){
-                            Log.i("Whisper", result);
-                            Message msg = Message.obtain();
-                            msg.what = MSG_TRANSCRIBE_DONE; msg.obj = result;
-                            handler.sendMessage(msg);
+                    if(!isRecording){
+                        isRecording = true;
+                        if(audioRecord != null) {
+                            audioRecord.startRecording();
                         }
-                    });
-
+                        Message.obtain(handler,MSG_START_REC).sendToTarget();
+                    }else{
+                        isRecording = false;
+                        if(audioRecord != null) {
+                            audioRecord.stop();
+                        }
+                        Message.obtain(handler,MSG_STOP_REC).sendToTarget();
+                    }
                 }
             }
         });
-//        binding.buttonSecond.setOnClickListener(v ->
-//                NavHostFragment.findNavController(MemoContentView.this)
-//                        .navigate(R.id.action_Back2List)
-//        );
 
     }
 
@@ -179,6 +217,17 @@ public class MemoContentView extends Fragment {
             handler.removeCallbacksAndMessages(null);
             handler = null;
         }
+        if(this.audioRecord != null){
+            if(this.audioRecord.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING){
+                this.audioRecord.stop();
+            }
+        }
+        if(this.future_recog != null && !this.future_recog.isDone()){
+            future_recog.cancel(true);
+            mViewModel.getWhisperService().stopAll();
+            Log.i("Whisper", "Cancelled running whisper");
+        }
+
         this.mViewModel.setContent_binding(null);
         this.mViewModel.setCurrEditing(null);
         binding = null;

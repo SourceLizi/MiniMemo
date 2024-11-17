@@ -1,17 +1,10 @@
 package com.memo.minimemo.transcribe;
 
 import android.app.Application;
-import android.content.Context;
-import android.os.Build;
-import android.os.Handler;
-import android.text.Editable;
+import android.media.AudioRecord;
 import android.util.Log;
-import android.widget.TextView;
-import android.widget.Toast;
 
-import com.memo.minimemo.entity.WhisperSegment;
-import com.memo.minimemo.transcribe.LocalWhisper;
-import com.memo.minimemo.transcribe.WaveEncoder;
+import com.whispercpp.java.whisper.WhisperContext;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -19,78 +12,107 @@ import java.util.concurrent.Executors;
 
 
 import java.io.File;
-import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class WhisperService {
-  private boolean isLoad = false;
-  private final ExecutorService executor;
+    private boolean isLoad = false;
+    private final ExecutorService executor;
 
-  public WhisperService(Application context) {
-    this.executor = Executors.newFixedThreadPool(2);
-    loadModel(context);
-  }
+    public static final String modelFilePath = "models/ggml-tiny-q8_0.bin";
+    public static final int audioSampleRate = 16000; //pcm 16bit mono
+    public static final int audioMaxSec = 50;
+    private WhisperContext whisperContext;
 
-  public void loadModel(Application context) {
-    this.executor.submit(() -> {
-      if(isLoad) return;
-      String modelFilePath = LocalWhisper.modelFilePath;
-      Log.i("Whisper", "load model from :" + modelFilePath + "\n");
+    public WhisperService(Application context) {
+        this.executor = Executors.newFixedThreadPool(2);
+        loadModel(context);
+    }
 
-      long start = System.currentTimeMillis();
-      LocalWhisper.INSTANCE.init(context);
-      long end = System.currentTimeMillis();
-      Log.i("Whisper", "model load successful:" + (end - start) + "ms");
-      isLoad = true;
-    });
-  }
+    public void loadModel(Application context) {
+        this.executor.submit(() -> {
+            if (isLoad) return;
+            Log.i("Whisper", "load model from :" + modelFilePath + "\n");
 
+            long start = System.currentTimeMillis();
 
-  public CompletableFuture<String> transcribeSample(File sampleFile) {
-    CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-      if (!isLoad) return null;
+            File filesDir = context.getFilesDir();
+            File modelFile = AssetUtils.copyFileIfNotExists(context, filesDir, modelFilePath);
+            String realModelFilePath = modelFile.getAbsolutePath();
+            whisperContext = WhisperContext.createContextFromFile(realModelFilePath);
 
-      float[] audioData = new float[0];  // 读取音频样本
-      try {
-        audioData = WaveEncoder.decodeWaveFile(sampleFile);
-      } catch (IOException e) {
-        e.printStackTrace();
-        return null;
-      }
-//      start = System.currentTimeMillis();
-      String transcription = null;
-      try {
-        transcription = LocalWhisper.INSTANCE.transcribeData(audioData);
-        //transcription = LocalWhisper.INSTANCE.transcribeDataWithTime(audioData);
-        return transcription;
-      } catch (ExecutionException | InterruptedException e) {
-        e.printStackTrace();
-      }
-
-//      end = System.currentTimeMillis();
-//      if (transcription != null) {
-//        Log.i("Whisper", transcription.toString());
-//        msg = "Transcript successful:" + (end - start) + "ms";
-//        Log.i("Whisper", msg);
-//      } else {
-//        msg = "Transcript failed:" + (end - start) + "ms";
-//        Log.i("Whisper", msg);
-//      }
-      return null;
-    },this.executor);
-    return  future;
-  }
-
-  public void stopAll(){
-    executor.shutdownNow();
-  }
+            long end = System.currentTimeMillis();
+            Log.i("Whisper", "model load successful:" + (end - start) + "ms");
+            isLoad = true;
+        });
+    }
 
 
-  @Override
-  protected void finalize() throws Throwable {
-    executor.shutdownNow();
-    LocalWhisper.INSTANCE.release();
-    super.finalize();
-  }
+    public CompletableFuture<String> transcribeSample(AudioRecord audioRecord) {
+        if(whisperContext==null){
+            Log.w("Whisper","please wait for model loading");
+            return null;
+        }
+        if(whisperContext.isRunning()) {
+            Log.w("Whisper","please wait for model finish running");
+            return null;
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            if (!isLoad) return null;
+
+            int max_size = audioSampleRate * audioMaxSec;
+            short[] buff = new short[max_size];
+            int real_size = audioRecord.read(buff, 0, max_size);
+            if (real_size > 0) {
+                float[] buff_float = new float[real_size];
+                for (int i = 0; i < real_size; i++) {
+                    buff_float[i] = Math.max(-1f, Math.min(1f, buff[i] / 32767.0f));
+                }
+                //start = System.currentTimeMillis();
+                try {
+                    return whisperContext.transcribeData(buff_float);
+                } catch (ExecutionException | InterruptedException e) {
+                    return null;
+                }
+//                end = System.currentTimeMillis();
+//                if (transcription != null) {
+//                    Log.i("Whisper", transcription.toString());
+//                    msg = "Transcript successful:" + (end - start) + "ms";
+//                    Log.i("Whisper", msg);
+//                } else {
+//                    msg = "Transcript failed:" + (end - start) + "ms";
+//                    Log.i("Whisper", msg);
+//                }
+            } else {
+                Log.i("Whisper", "Error reading buffer, code=" + String.valueOf(real_size));
+                return null;
+            }
+
+//     try {
+//         Thread.sleep(2000);
+//     } catch (InterruptedException e) {
+//         throw new RuntimeException(e);
+//     }
+//     return "And so my fellow Americans ask not what your country can do for you ask what you can do for your country.";
+        }, this.executor);
+    }
+
+    public void stopAll() {
+        if(whisperContext != null){
+            whisperContext.stopTranscribe();
+        }
+    }
+
+
+    @Override
+    protected void finalize() throws Throwable {
+        executor.shutdownNow();
+        try {
+            if(whisperContext != null) {
+                whisperContext.stopTranscribe();
+                whisperContext.release();
+            }
+        } catch (ExecutionException | InterruptedException ignored) {}
+        super.finalize();
+    }
 }

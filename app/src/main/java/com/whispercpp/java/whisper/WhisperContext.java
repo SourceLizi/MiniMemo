@@ -22,10 +22,14 @@ public class WhisperContext {
   private long ptr;
   private final ExecutorService executorService;
 
+  private boolean isRunning = false;
+
   private WhisperContext(long ptr) {
     this.ptr = ptr;
     this.executorService = Executors.newSingleThreadExecutor();
   }
+
+  public boolean isRunning() {return isRunning;}
 
   public String transcribeData(float[] data) throws ExecutionException, InterruptedException {
     return executorService.submit(new Callable<String>() {
@@ -39,8 +43,8 @@ public class WhisperContext {
         Log.d(LOG_TAG, "Selecting " + numThreads + " threads");
 
         StringBuilder result = new StringBuilder();
+        isRunning = true;
         synchronized (this) {
-
           WhisperLib.fullTranscribe(ptr, numThreads, data);
           int textCount = WhisperLib.getTextSegmentCount(ptr);
           for (int i = 0; i < textCount; i++) {
@@ -48,6 +52,7 @@ public class WhisperContext {
             result.append(sentence);
           }
         }
+        isRunning = false;
         return result.toString();
       }
     }).get();
@@ -82,6 +87,10 @@ public class WhisperContext {
         return segments;
       }
     }).get();
+  }
+
+  public void stopTranscribe(){
+    WhisperLib.setAbort();
   }
 
   

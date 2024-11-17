@@ -1,12 +1,16 @@
 package com.memo.minimemo;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
 
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -14,6 +18,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.MenuItemCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
@@ -48,10 +54,25 @@ public class MainActivity extends AppCompatActivity {
 
     private MemoViewModel mViewModel;
 
+    public final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    mViewModel.createRecorder();
+                }else{
+                    Snackbar.make(binding.getRoot(), "语音识别需要授予权限"
+                            , Snackbar.LENGTH_LONG).show();
+                }
+            });
 
     public void setDoneVisible(boolean vis){
         Menu menu = (Menu)binding.toolbar.getMenu();
         menu.findItem(R.id.action_save).setVisible(vis);
+    }
+
+    @Override
+    protected void onDestroy() {
+        this.mViewModel.releaseRecorder();
+        super.onDestroy();
     }
 
     @Override
@@ -93,6 +114,21 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+        if (ActivityCompat.checkSelfPermission(
+                getApplication(), Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED) {
+            // You can use the API that requires the permission.
+            this.mViewModel.createRecorder();
+        } else if (ActivityCompat.shouldShowRequestPermissionRationale(
+                this, Manifest.permission.RECORD_AUDIO)) {
+            Snackbar.make(binding.getRoot(), "语音识别需要授予权限", Snackbar.LENGTH_LONG)
+                    .setAction("授予权限", view -> requestPermissionLauncher.launch(
+                            Manifest.permission.RECORD_AUDIO)).show();
+        } else {
+            requestPermissionLauncher.launch(
+                    Manifest.permission.RECORD_AUDIO);
+        }
+
     }
 
     @Override
