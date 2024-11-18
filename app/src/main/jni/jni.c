@@ -189,17 +189,22 @@ Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
     const jsize audio_data_length = (*env)->GetArrayLength(env, audio_data);
 
     // The below adapted from the Objective-C iOS sample
-    struct whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
+    struct whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH);
     params.print_realtime = true;
     params.print_progress = false;
     params.print_timestamps = true;
     params.print_special = false;
     params.translate = false;
-    params.language = "en";
+    params.language = "zh";
+    params.initial_prompt = "以下是普通话的句子。";
+    //params.language = "en";
+
     params.n_threads = num_threads;
     params.offset_ms = 0;
     params.no_context = true;
     params.single_segment = false;
+    params.suppress_blank = true;
+    params.suppress_non_speech_tokens = true;
 
     params.abort_callback = whisper_abort_callback;
     params.abort_callback_user_data = &is_aborted;

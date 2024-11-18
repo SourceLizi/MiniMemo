@@ -49,7 +49,7 @@ public class MemoContentView extends Fragment {
     private CircularProgressDrawable circularProgressDrawable;
     private Drawable voice_off, voice_on;
     private AudioRecord audioRecord;
-    CompletableFuture<String> future_recog = null;
+    private CompletableFuture<String> future_recog = null;
 
     private Handler handler;
     static final int MSG_TRANSCRIBE_DONE = 1;
@@ -135,10 +135,13 @@ public class MemoContentView extends Fragment {
         this.audioRecord = mViewModel.getAudioRecord();
 
 
+
          this.handler = new Handler(msg -> {
              if (msg.what == MSG_TRANSCRIBE_DONE){
                  binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
-                 binding.textContent.append(msg.obj.toString());
+                 if (msg.obj != null) {
+                     binding.textContent.append(msg.obj.toString());
+                 }
                  binding.buttonVoice.setEnabled(true);
                  this.future_recog = null;
              }else if(msg.what == MSG_START_REC){
@@ -149,10 +152,11 @@ public class MemoContentView extends Fragment {
                  if(this.future_recog == null){
                      binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
                      binding.buttonVoice.setEnabled(true);
+                     Snackbar.make(binding.getRoot(), "语音识别调用失败", Snackbar.LENGTH_LONG).show();
                  }else{
                      this.future_recog.thenAccept(result -> {
-                         if(result != null && handler != null){
-                             Log.i("Whisper", result);
+                         if(handler != null){
+                             //Log.i("Whisper", result);
                              Message.obtain(handler,MSG_TRANSCRIBE_DONE,result).sendToTarget();
                          }
                      });
@@ -164,6 +168,7 @@ public class MemoContentView extends Fragment {
              }
             return true;
         });
+
 
         if(audioRecord != null){
             audioRecord.setNotificationMarkerPosition(WhisperService.audioSampleRate * WhisperService.audioMaxSec);
@@ -179,6 +184,7 @@ public class MemoContentView extends Fragment {
             });
         }
 
+
         binding.buttonVoice.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -187,16 +193,23 @@ public class MemoContentView extends Fragment {
                 if (ActivityCompat.checkSelfPermission(
                         activity.getApplication(), Manifest.permission.RECORD_AUDIO) !=
                         PackageManager.PERMISSION_GRANTED) {
-                    Snackbar.make(binding.getRoot(), "语音识别需要授予权限", Snackbar.LENGTH_LONG)
-                            .setAction("授予权限", view_b -> activity.requestPermissionLauncher.launch(
+                    String msg_text = getResources().getString(R.string.voice_permission_msg);
+                    String msg_btn_text = getResources().getString(R.string.voice_permission_btn);
+                    Snackbar.make(binding.getRoot(), msg_text, Snackbar.LENGTH_LONG)
+                            .setAction(msg_btn_text, viewb -> activity.requestPermissionLauncher.launch(
                                     Manifest.permission.RECORD_AUDIO)).show();
                 }else{
                     if(!isRecording){
-                        isRecording = true;
-                        if(audioRecord != null) {
-                            audioRecord.startRecording();
+                        if(mViewModel.getWhisperService().isRunning()){
+                            String msg_text = getResources().getString(R.string.whisper_running_msg);
+                            Snackbar.make(binding.getRoot(), msg_text, Snackbar.LENGTH_LONG).show();
+                        }else{
+                            isRecording = true;
+                            if(audioRecord != null) {
+                                audioRecord.startRecording();
+                            }
+                            Message.obtain(handler,MSG_START_REC).sendToTarget();
                         }
-                        Message.obtain(handler,MSG_START_REC).sendToTarget();
                     }else{
                         isRecording = false;
                         if(audioRecord != null) {

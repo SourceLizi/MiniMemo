@@ -38,9 +38,7 @@ public class MemoListView extends Fragment {
                 int menu_id = item.getItemId();
                 if(menu_id == R.id.action_delete){
                     mViewModel.deleteById(id);
-                    Log.i("TAG","onDelClick,id=" + String.valueOf(id));
-                }else if(menu_id == R.id.action_rename_title){
-                    Log.i("TAG","onRenameClick,id=" + String.valueOf(id));
+                    //Log.i("TAG","onDelClick,id=" + String.valueOf(id));
                 }
                 return true;
             }
@@ -107,6 +105,9 @@ public class MemoListView extends Fragment {
                 showPopupMenu(vh.itemView,curr.uid);
             }
         });
+        if(adapter.getItemCount() == 0) {
+            binding.emptyText.setVisibility(View.VISIBLE);
+        }
 
     }
 

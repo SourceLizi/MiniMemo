@@ -2,6 +2,7 @@ package com.memo.minimemo;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -59,8 +60,8 @@ public class MainActivity extends AppCompatActivity {
                 if (isGranted) {
                     mViewModel.createRecorder();
                 }else{
-                    Snackbar.make(binding.getRoot(), "语音识别需要授予权限"
-                            , Snackbar.LENGTH_LONG).show();
+                    String msg_text = getResources().getString(R.string.voice_permission_msg);
+                    Snackbar.make(binding.getRoot(), msg_text, Snackbar.LENGTH_LONG).show();
                 }
             });
 
@@ -94,26 +95,19 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleOnBackPressed() {
                 // Handle the back button event
-                if(searchView != null && !searchView.isIconified()){
-                    searchView.setQuery("",false);
-                    searchView.clearFocus();
-                    searchView.setIconified(true);
-                }else{
-                    finish();
+                if(!m_navController.navigateUp()){
+                    if(searchView != null && !searchView.isIconified()){
+                        searchView.setQuery("",false);
+                        searchView.clearFocus();
+                        searchView.setIconified(true);
+                    }else{
+                        finish();
+                    }
                 }
             }
         };
         getOnBackPressedDispatcher().addCallback(this, callback);
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                        .setAnchorView(R.id.fab)
-//                        .setAction("Action", null).show();
 
-
-            }
-        });
         if (ActivityCompat.checkSelfPermission(
                 getApplication(), Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED) {
@@ -121,8 +115,10 @@ public class MainActivity extends AppCompatActivity {
             this.mViewModel.createRecorder();
         } else if (ActivityCompat.shouldShowRequestPermissionRationale(
                 this, Manifest.permission.RECORD_AUDIO)) {
-            Snackbar.make(binding.getRoot(), "语音识别需要授予权限", Snackbar.LENGTH_LONG)
-                    .setAction("授予权限", view -> requestPermissionLauncher.launch(
+            String msg_text = getResources().getString(R.string.voice_permission_msg);
+            String msg_btn_text = getResources().getString(R.string.voice_permission_btn);
+            Snackbar.make(binding.getRoot(), msg_text, Snackbar.LENGTH_LONG)
+                    .setAction(msg_btn_text, view -> requestPermissionLauncher.launch(
                             Manifest.permission.RECORD_AUDIO)).show();
         } else {
             requestPermissionLauncher.launch(
@@ -148,6 +144,7 @@ public class MainActivity extends AppCompatActivity {
                 if(destination_id == R.id.ContentFragment){
                     menu.findItem(R.id.action_new).setVisible(false);
                     menu.findItem(R.id.action_search).setVisible(false);
+                    menu.findItem(R.id.action_share).setVisible(true);
                 }else if(destination_id == R.id.FragmentList){
                     SearchView searchView = (SearchView) searchViewItem.getActionView();
                     if(searchView != null) {
@@ -158,6 +155,7 @@ public class MainActivity extends AppCompatActivity {
                     menu.findItem(R.id.action_new).setVisible(true);
                     menu.findItem(R.id.action_search).setVisible(true);
                     menu.findItem(R.id.action_save).setVisible(false);
+                    menu.findItem(R.id.action_share).setVisible(false);
                 }
                 //Log.i("TAG", "onDestinationChanged: id = " + destination.getId());
             }
@@ -196,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int menu_id = item.getItemId();
-        Log.i("TAG","onOptionsItemSelected,id="+String.valueOf(menu_id));
+        //Log.i("TAG","onOptionsItemSelected,id="+String.valueOf(menu_id));
 
         if(menu_id != R.id.action_search){
             if(this.searchView != null){
@@ -232,6 +230,18 @@ public class MainActivity extends AppCompatActivity {
                     menu.findItem(R.id.action_save).setVisible(false);
                     //m_navController.navigateUp();
                 }
+            } else if (menu_id == R.id.action_share) {
+                FragmentContentBinding binding1 = this.mViewModel.getContent_binding();
+                String share_text = binding1.textTitle.getText().toString() + '\n' +
+                        binding1.textContent.getText().toString();
+
+                Intent sendIntent = new Intent();
+                sendIntent.setAction(Intent.ACTION_SEND);
+                sendIntent.putExtra(Intent.EXTRA_TEXT, share_text);
+                sendIntent.setType("text/plain");
+
+                Intent shareIntent = Intent.createChooser(sendIntent, null);
+                startActivity(shareIntent);
             }
         }
 

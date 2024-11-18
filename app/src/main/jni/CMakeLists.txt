@@ -32,7 +32,8 @@ function(build_library target_name)
         target_compile_options(${target_name} PRIVATE -mfpu=neon-vfpv4)
     endif ()
 
-    target_compile_options(${target_name} PRIVATE -O3)
+    target_compile_options(${target_name} PRIVATE -Ofast -fno-finite-math-only)
+    #target_compile_options(${target_name} PRIVATE -O3)
 
     if (NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 

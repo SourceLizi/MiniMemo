@@ -1,6 +1,7 @@
 package com.memo.minimemo.transcribe;
 
 import android.app.Application;
+import android.content.Context;
 import android.media.AudioRecord;
 import android.util.Log;
 
@@ -19,46 +20,42 @@ public class WhisperService {
     private boolean isLoad = false;
     private final ExecutorService executor;
 
-    public static final String modelFilePath = "models/ggml-tiny-q8_0.bin";
+    public static final String modelFilePath = "models/ggml-base-q5_1.bin";
     public static final int audioSampleRate = 16000; //pcm 16bit mono
     public static final int audioMaxSec = 50;
     private WhisperContext whisperContext;
 
+    private final Context app_context;
+
     public WhisperService(Application context) {
-        this.executor = Executors.newFixedThreadPool(2);
-        loadModel(context);
+        this.executor = Executors.newFixedThreadPool(1);
+        this.app_context = context;
     }
 
-    public void loadModel(Application context) {
-        this.executor.submit(() -> {
-            if (isLoad) return;
-            Log.i("Whisper", "load model from :" + modelFilePath + "\n");
+    public boolean isRunning(){ return (whisperContext != null && whisperContext.isRunning()); }
 
-            long start = System.currentTimeMillis();
+    private void loadModel() {
+        Log.i("Whisper", "load model from :" + modelFilePath + "\n");
 
-            File filesDir = context.getFilesDir();
-            File modelFile = AssetUtils.copyFileIfNotExists(context, filesDir, modelFilePath);
-            String realModelFilePath = modelFile.getAbsolutePath();
-            whisperContext = WhisperContext.createContextFromFile(realModelFilePath);
+        long start = System.currentTimeMillis();
 
-            long end = System.currentTimeMillis();
-            Log.i("Whisper", "model load successful:" + (end - start) + "ms");
-            isLoad = true;
-        });
+        File filesDir = app_context.getFilesDir();
+        File modelFile = AssetUtils.copyFileIfNotExists(app_context, filesDir, modelFilePath);
+        String realModelFilePath = modelFile.getAbsolutePath();
+        whisperContext = WhisperContext.createContextFromFile(realModelFilePath);
+
+        long end = System.currentTimeMillis();
+        Log.i("Whisper", "model load successful:" + (end - start) + "ms");
     }
 
 
     public CompletableFuture<String> transcribeSample(AudioRecord audioRecord) {
-        if(whisperContext==null){
-            Log.w("Whisper","please wait for model loading");
-            return null;
-        }
-        if(whisperContext.isRunning()) {
+        if(whisperContext != null && whisperContext.isRunning()) {
             Log.w("Whisper","please wait for model finish running");
             return null;
         }
         return CompletableFuture.supplyAsync(() -> {
-            if (!isLoad) return null;
+            loadModel();
 
             int max_size = audioSampleRate * audioMaxSec;
             short[] buff = new short[max_size];
@@ -70,7 +67,11 @@ public class WhisperService {
                 }
                 //start = System.currentTimeMillis();
                 try {
-                    return whisperContext.transcribeData(buff_float);
+                    String result = whisperContext.transcribeData(buff_float);
+                    whisperContext.stopTranscribe();
+                    whisperContext.release();
+                    whisperContext = null;
+                    return result;
                 } catch (ExecutionException | InterruptedException e) {
                     return null;
                 }

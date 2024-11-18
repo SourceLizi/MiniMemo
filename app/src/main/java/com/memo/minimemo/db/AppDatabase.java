@@ -8,6 +8,8 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
+import com.memo.minimemo.R;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -47,11 +49,8 @@ public abstract class AppDatabase extends RoomDatabase {
                 // If you want to start with more words, just add them.
                 MemoDao dao = INSTANCE.memoDao();
                 dao.deleteAll();
-
-                MemoData m = new MemoData("Title1","this is a new memo");
-                dao.insertAll(m);
-                m = new MemoData("Title2","this is a new memo");
-                dao.insertAll(m);
+//                MemoData m = new MemoData("Title","");
+//                dao.insertAll(m);
             });
         }
     };

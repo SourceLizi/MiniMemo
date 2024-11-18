@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">备忘录</string>
+    <string name="action_new">新建</string>
+    <string name="action_search">搜索</string>
+    <string name="action_save">保存</string>
+    <string name="action_rename">重命名</string>
+    <string name="action_share">分享</string>
+    <string name="action_delete">删除</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="list_title">备忘录</string>
+    <string name="new_title">新建备忘录</string>
+    <string name="info_text">创建于%s | %d字</string>
+    <string name="empty_info_text">无数据</string>
+    <string name="voice_permission_msg">语音识别需要授予权限</string>
+    <string name="voice_permission_btn">授权</string>
+    <string name="whisper_running_msg">语音识别已在运行</string>
+    <string name="whisper_failed_msg">语音识别调用失败</string>
+</resources>
