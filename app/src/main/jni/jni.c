@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+#include <android/configuration.h>
 #include <android/log.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -24,6 +25,8 @@ static inline int max(int a, int b) {
 }
 
 static bool is_aborted = false;
+static char language[3] = {0};
+static char country[3] = {0};
 
 struct input_stream_context {
     size_t offset;
@@ -33,6 +36,13 @@ struct input_stream_context {
 
     jmethodID mid_available;
     jmethodID mid_read;
+};
+
+struct callback_context{
+    JNIEnv * env;
+    jobject thiz;
+    jobject call_back;
+    jmethodID call_method;
 };
 
 size_t inputStreamRead(void * ctx, void * output, size_t read_size) {
@@ -139,6 +149,13 @@ Java_com_whispercpp_java_whisper_WhisperLib_initContextFromAsset(
     UNUSED(thiz);
     struct whisper_context *context = NULL;
     const char *asset_path_chars = (*env)->GetStringUTFChars(env, asset_path_str, NULL);
+
+    AAssetManager *asset_manager = AAssetManager_fromJava(env, assetManager);
+    AConfiguration* configuration = AConfiguration_new();
+    AConfiguration_fromAssetManager(configuration,asset_manager);
+    AConfiguration_getLanguage(configuration,language);
+    AConfiguration_getCountry(configuration,country);
+
     context = whisper_init_from_asset(env, assetManager, asset_path_chars);
     (*env)->ReleaseStringUTFChars(env, asset_path_str, asset_path_chars);
     return (jlong) context;
@@ -153,6 +170,21 @@ Java_com_whispercpp_java_whisper_WhisperLib_initContext(
     context = whisper_init_from_file(model_path_chars);
     (*env)->ReleaseStringUTFChars(env, model_path_str, model_path_chars);
     return (jlong) context;
+}
+
+void on_new_segment(struct whisper_context * ctx, struct whisper_state * state
+        , int n_new, void * user_data){
+    if(is_aborted) return;
+    struct callback_context* cb_context = (struct callback_context*)user_data;
+    int n_segments = whisper_full_n_segments(ctx);
+    int s0 = n_segments - n_new;
+    for (int i = s0; i < n_segments; i++) {
+        const char * text = whisper_full_get_segment_text(ctx, i);
+        jstring text_str = (*cb_context->env)->NewStringUTF(cb_context->env, text);
+        (*cb_context->env)->CallVoidMethod(cb_context->env, cb_context->call_back
+                        , cb_context->call_method,text_str,(jint)i);
+        (*cb_context->env)->DeleteLocalRef(cb_context->env,text_str);
+    }
 }
 
 JNIEXPORT void JNICALL
@@ -182,25 +214,35 @@ JNIEXPORT void JNICALL
 
 JNIEXPORT void JNICALL
 Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
-        JNIEnv *env, jobject thiz, jlong context_ptr, jint num_threads, jfloatArray audio_data) {
+        JNIEnv *env, jobject thiz, jlong context_ptr, jint num_threads,
+        jfloatArray audio_data, jobject new_seg_cb) {
     UNUSED(thiz);
     struct whisper_context *context = (struct whisper_context *) context_ptr;
+    struct callback_context cb_context = {};
     jfloat *audio_data_arr = (*env)->GetFloatArrayElements(env, audio_data, NULL);
     const jsize audio_data_length = (*env)->GetArrayLength(env, audio_data);
 
     // The below adapted from the Objective-C iOS sample
     struct whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH);
-    params.print_realtime = true;
+    params.print_realtime = false;
     params.print_progress = false;
-    params.print_timestamps = true;
+    params.print_timestamps = false;
     params.print_special = false;
     params.translate = false;
-    params.language = "zh";
-    params.initial_prompt = "以下是普通话的句子。";
-    //params.language = "en";
 
-    params.n_threads = num_threads;
+    if(language[0] != '\0' && language[1] != '\0'){
+        params.language = language;
+        if(language[0] == 'z' && language[1] == 'h'
+            && country[0] == 'C' && country[1] == 'N'){
+            params.initial_prompt = "以下是普通话的句子。";
+        }
+    }else{
+        params.language = "en";
+    }
+
+    //params.n_threads = num_threads;
     params.offset_ms = 0;
+    params.duration_ms = audio_data_length / 16;
     params.no_context = true;
     params.single_segment = false;
     params.suppress_blank = true;
@@ -213,9 +255,22 @@ Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
     params.encoder_begin_callback_user_data = &is_aborted;
     is_aborted = false;
 
+    if(new_seg_cb){
+        cb_context.env = env;
+        cb_context.thiz = thiz;
+        cb_context.call_back = new_seg_cb;
+
+        jclass callClass = (*env)->GetObjectClass(env,new_seg_cb);
+        cb_context.call_method = (*env)->GetMethodID(env,callClass
+                ,"onNewSegment","(Ljava/lang/String;I)V");
+
+        params.new_segment_callback = on_new_segment;
+        params.new_segment_callback_user_data = &cb_context;
+    }
+
     whisper_reset_timings(context);
 
-    LOGI("About to run whisper_full");
+    LOGI("About to run whisper_full, locale=%s-%s",language,country);
     //int n_core = sysconf(_SC_NPROCESSORS_ONLN);
     if (whisper_full(context, params, audio_data_arr, audio_data_length) != 0) {
         LOGI("Failed to run the model");

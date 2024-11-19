@@ -15,6 +15,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.content.res.AppCompatResources;
@@ -31,6 +32,7 @@ import com.memo.minimemo.R;
 import com.memo.minimemo.databinding.FragmentContentBinding;
 import com.memo.minimemo.db.MemoData;
 import com.memo.minimemo.transcribe.WhisperService;
+import com.whispercpp.java.whisper.WhisperLib;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,9 +54,10 @@ public class MemoContentView extends Fragment {
     private CompletableFuture<String> future_recog = null;
 
     private Handler handler;
-    static final int MSG_TRANSCRIBE_DONE = 1;
-    static final int MSG_START_REC = 2;
-    static final int MSG_STOP_REC = 3;
+    private static final int MSG_TRANSCRIBE_DONE = 1;
+    private static final int MSG_START_REC = 2;
+    private static final int MSG_STOP_REC = 3;
+    private static final int MSG_NEW_SEGMENT = 4;
 
     @Override
     public View onCreateView(
@@ -78,6 +81,8 @@ public class MemoContentView extends Fragment {
 
         this.formatStr = getResources().getString(R.string.info_text);
         this.mViewModel.setContent_binding(binding);
+        binding.textContent.setEnabled(true);
+        binding.textTitle.setEnabled(true);
 
         if(getArguments() != null) {
             this.mViewModel.getById(getArguments().getLong("id")).observe(getViewLifecycleOwner(),
@@ -134,26 +139,46 @@ public class MemoContentView extends Fragment {
         this.voice_on = AppCompatResources.getDrawable(context,R.drawable.ic_action_voice);
         this.audioRecord = mViewModel.getAudioRecord();
 
-
-
          this.handler = new Handler(msg -> {
              if (msg.what == MSG_TRANSCRIBE_DONE){
                  binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
+//                 if (msg.obj != null) {
+//                     binding.textContent.append(msg.obj.toString());
+//                 }
+                 binding.buttonVoice.setEnabled(true);
+                 binding.textContent.setEnabled(true);
+                 binding.textTitle.setEnabled(true);
+                 this.future_recog = null;
+             }else if(msg.what == MSG_NEW_SEGMENT){
                  if (msg.obj != null) {
                      binding.textContent.append(msg.obj.toString());
                  }
-                 binding.buttonVoice.setEnabled(true);
-                 this.future_recog = null;
-             }else if(msg.what == MSG_START_REC){
+             }
+             else if(msg.what == MSG_START_REC){
                  binding.buttonVoice.setImageDrawable(voice_on);
              }else if(msg.what == MSG_STOP_REC){
-
-                 this.future_recog = mViewModel.getWhisperService().transcribeSample(audioRecord);
+                 this.future_recog = mViewModel.getWhisperService().transcribeSample(audioRecord,
+                         new WhisperLib.callback_fn() {
+                     @Override
+                     public void onNewSegment(String new_seg, int seg_idx) {
+                         if(handler != null){
+                             Message.obtain(handler,MSG_NEW_SEGMENT,new_seg).sendToTarget();
+                         }
+                     }
+                 });
                  if(this.future_recog == null){
                      binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
                      binding.buttonVoice.setEnabled(true);
-                     Snackbar.make(binding.getRoot(), "语音识别调用失败", Snackbar.LENGTH_LONG).show();
+                     String msg_text = getResources().getString(R.string.whisper_failed_msg);
+                     Snackbar.make(binding.getRoot(), msg_text, Snackbar.LENGTH_LONG).show();
                  }else{
+                     binding.textContent.setEnabled(false);
+                     binding.textTitle.setEnabled(false);
+                     if(activity != null){
+                         InputMethodManager imm = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+                         imm.hideSoftInputFromWindow(binding.textContent.getWindowToken(),0);
+                         imm.hideSoftInputFromWindow(binding.textTitle.getWindowToken(),0);
+                     }
                      this.future_recog.thenAccept(result -> {
                          if(handler != null){
                              //Log.i("Whisper", result);
@@ -196,7 +221,7 @@ public class MemoContentView extends Fragment {
                     String msg_text = getResources().getString(R.string.voice_permission_msg);
                     String msg_btn_text = getResources().getString(R.string.voice_permission_btn);
                     Snackbar.make(binding.getRoot(), msg_text, Snackbar.LENGTH_LONG)
-                            .setAction(msg_btn_text, viewb -> activity.requestPermissionLauncher.launch(
+                            .setAction(msg_btn_text, views -> activity.requestPermissionLauncher.launch(
                                     Manifest.permission.RECORD_AUDIO)).show();
                 }else{
                     if(!isRecording){

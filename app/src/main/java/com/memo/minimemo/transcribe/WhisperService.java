@@ -2,15 +2,16 @@ package com.memo.minimemo.transcribe;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.res.AssetManager;
 import android.media.AudioRecord;
 import android.util.Log;
 
 import com.whispercpp.java.whisper.WhisperContext;
+import com.whispercpp.java.whisper.WhisperLib;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
 
 import java.io.File;
 import java.util.concurrent.ExecutionException;
@@ -35,21 +36,21 @@ public class WhisperService {
     public boolean isRunning(){ return (whisperContext != null && whisperContext.isRunning()); }
 
     private void loadModel() {
-        Log.i("Whisper", "load model from :" + modelFilePath + "\n");
-
         long start = System.currentTimeMillis();
 
-        File filesDir = app_context.getFilesDir();
-        File modelFile = AssetUtils.copyFileIfNotExists(app_context, filesDir, modelFilePath);
-        String realModelFilePath = modelFile.getAbsolutePath();
-        whisperContext = WhisperContext.createContextFromFile(realModelFilePath);
+//        File filesDir = app_context.getFilesDir();
+//        File modelFile = AssetUtils.copyFileIfNotExists(app_context, filesDir, modelFilePath);
+//        String realModelFilePath = modelFile.getAbsolutePath();
+//        whisperContext = WhisperContext.createContextFromFile(realModelFilePath);
+        AssetManager assetManager = app_context.getAssets();
+        whisperContext = WhisperContext.createContextFromAsset(assetManager, modelFilePath);
 
         long end = System.currentTimeMillis();
         Log.i("Whisper", "model load successful:" + (end - start) + "ms");
     }
 
 
-    public CompletableFuture<String> transcribeSample(AudioRecord audioRecord) {
+    public CompletableFuture<String> transcribeSample(AudioRecord audioRecord, WhisperLib.callback_fn cb) {
         if(whisperContext != null && whisperContext.isRunning()) {
             Log.w("Whisper","please wait for model finish running");
             return null;
@@ -65,25 +66,18 @@ public class WhisperService {
                 for (int i = 0; i < real_size; i++) {
                     buff_float[i] = Math.max(-1f, Math.min(1f, buff[i] / 32767.0f));
                 }
-                //start = System.currentTimeMillis();
+                long start = System.currentTimeMillis();
                 try {
-                    String result = whisperContext.transcribeData(buff_float);
+                    String result = whisperContext.transcribeData(buff_float,cb);
                     whisperContext.stopTranscribe();
                     whisperContext.release();
                     whisperContext = null;
+                    long end = System.currentTimeMillis();
+                    Log.i("Whisper", "Transcript successful:" + (end - start) + "ms");
                     return result;
                 } catch (ExecutionException | InterruptedException e) {
                     return null;
                 }
-//                end = System.currentTimeMillis();
-//                if (transcription != null) {
-//                    Log.i("Whisper", transcription.toString());
-//                    msg = "Transcript successful:" + (end - start) + "ms";
-//                    Log.i("Whisper", msg);
-//                } else {
-//                    msg = "Transcript failed:" + (end - start) + "ms";
-//                    Log.i("Whisper", msg);
-//                }
             } else {
                 Log.i("Whisper", "Error reading buffer, code=" + String.valueOf(real_size));
                 return null;
