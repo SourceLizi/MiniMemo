@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
             });
 
     public void setDoneVisible(boolean vis){
-        Menu menu = (Menu)binding.toolbar.getMenu();
+        Menu menu = binding.toolbar.getMenu();
         menu.findItem(R.id.action_save).setVisible(vis);
     }
 
@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
             public void onDestinationChanged(@NonNull NavController controller, @NonNull NavDestination destination,
                                              @Nullable Bundle arguments) {
                 int destination_id = destination.getId();
-                Menu menu = (Menu)binding.toolbar.getMenu();
+                Menu menu = binding.toolbar.getMenu();
                 if(destination_id == R.id.ContentFragment){
                     menu.findItem(R.id.action_new).setVisible(false);
                     menu.findItem(R.id.action_search).setVisible(false);
@@ -213,7 +213,7 @@ public class MainActivity extends AppCompatActivity {
                     editingMemo.updateTime = System.currentTimeMillis();
                     this.mViewModel.update(editingMemo);
 
-                    Menu menu = (Menu)binding.toolbar.getMenu();
+                    Menu menu = binding.toolbar.getMenu();
                     menu.findItem(R.id.action_save).setVisible(false);
                     //m_navController.navigateUp();
                 }

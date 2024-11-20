@@ -4,6 +4,8 @@
 #include "coreml/whisper-encoder.h"
 #endif
 
+#include "ggml-cpu.h"
+
 #ifdef GGML_USE_METAL
 #include "ggml-metal.h"
 #endif
@@ -139,9 +141,12 @@ WHISPER_ATTRIBUTE_FORMAT(2, 3)
 static void whisper_log_internal        (ggml_log_level level, const char * format, ...);
 static void whisper_log_callback_default(ggml_log_level level, const char * text, void * user_data);
 
-#define WHISPER_LOG_ERROR(...) whisper_log_internal(GGML_LOG_LEVEL_ERROR, __VA_ARGS__)
-#define WHISPER_LOG_WARN(...)  whisper_log_internal(GGML_LOG_LEVEL_WARN , __VA_ARGS__)
-#define WHISPER_LOG_INFO(...)  whisper_log_internal(GGML_LOG_LEVEL_INFO , __VA_ARGS__)
+//#define WHISPER_LOG_ERROR(...) whisper_log_internal(GGML_LOG_LEVEL_ERROR, __VA_ARGS__)
+//#define WHISPER_LOG_WARN(...)  whisper_log_internal(GGML_LOG_LEVEL_WARN , __VA_ARGS__)
+//#define WHISPER_LOG_INFO(...)  whisper_log_internal(GGML_LOG_LEVEL_INFO , __VA_ARGS__)
+#define WHISPER_LOG_ERROR(...)
+#define WHISPER_LOG_WARN(...)
+#define WHISPER_LOG_INFO(...)
 
 // define this to enable verbose trace logging - useful for debugging purposes
 //#define WHISPER_DEBUG
@@ -3164,7 +3169,7 @@ static bool log_mel_spectrogram(
         std::vector<std::thread> workers(n_threads - 1);
         for (int iw = 0; iw < n_threads - 1; ++iw) {
             workers[iw] = std::thread(
-                    log_mel_spectrogram_worker_thread, iw + 1, hann, samples_padded,
+                    log_mel_spectrogram_worker_thread, iw + 1, hann, std::cref(samples_padded),
                     n_samples + stage_2_pad, frame_size, frame_step, n_threads,
                     std::cref(filters), std::ref(mel));
         }
@@ -4184,6 +4189,19 @@ whisper_token whisper_token_translate(struct whisper_context * ctx) {
 
 whisper_token whisper_token_transcribe(struct whisper_context * ctx) {
     return ctx->vocab.token_transcribe;
+}
+
+struct whisper_timings * whisper_get_timings(struct whisper_context * ctx) {
+    if (ctx->state == nullptr) {
+        return nullptr;
+    }
+    whisper_timings * timings = new whisper_timings;
+    timings->sample_ms = 1e-3f * ctx->state->t_sample_us / std::max(1, ctx->state->n_sample);
+    timings->encode_ms = 1e-3f * ctx->state->t_encode_us / std::max(1, ctx->state->n_encode);
+    timings->decode_ms = 1e-3f * ctx->state->t_decode_us / std::max(1, ctx->state->n_decode);
+    timings->batchd_ms = 1e-3f * ctx->state->t_batchd_us / std::max(1, ctx->state->n_batchd);
+    timings->prompt_ms = 1e-3f * ctx->state->t_prompt_us / std::max(1, ctx->state->n_prompt);
+    return timings;
 }
 
 void whisper_print_timings(struct whisper_context * ctx) {
@@ -7391,6 +7409,7 @@ static void whisper_exp_compute_token_level_timestamps_dtw(
 void whisper_log_set(ggml_log_callback log_callback, void * user_data) {
     g_state.log_callback = log_callback ? log_callback : whisper_log_callback_default;
     g_state.log_callback_user_data = user_data;
+    ggml_log_set(g_state.log_callback, g_state.log_callback_user_data);
 }
 
 GGML_ATTRIBUTE_FORMAT(2, 3)

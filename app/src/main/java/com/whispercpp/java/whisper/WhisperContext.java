@@ -1,12 +1,7 @@
 package com.whispercpp.java.whisper;
 
 import android.content.res.AssetManager;
-import android.os.Build;
 import android.util.Log;
-
-import androidx.annotation.RequiresApi;
-
-import com.memo.minimemo.entity.WhisperSegment;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -15,6 +10,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import com.memo.minimemo.entity.WhisperSegment;
 
 public class WhisperContext {
 
@@ -33,11 +30,12 @@ public class WhisperContext {
         return isRunning;
     }
 
-    public String transcribeData(float[] data, WhisperLib.callback_fn cb) throws ExecutionException, InterruptedException {
+    public String transcribeData(float[] data, WhisperLib.callback_fn cb)
+            throws ExecutionException, InterruptedException {
         return executorService.submit(new Callable<String>() {
 
             @Override
-            public String call() throws Exception {
+            public String call(){
                 if (ptr == 0L) {
                     throw new IllegalStateException();
                 }
@@ -60,11 +58,12 @@ public class WhisperContext {
         }).get();
     }
 
-    public List<WhisperSegment> transcribeDataWithTime(float[] data, WhisperLib.callback_fn cb) throws ExecutionException, InterruptedException {
+    public List<WhisperSegment> transcribeDataWithTime(float[] data, WhisperLib.callback_fn cb)
+            throws ExecutionException, InterruptedException {
         return executorService.submit(new Callable<List<WhisperSegment>>() {
 
             @Override
-            public List<WhisperSegment> call() throws Exception {
+            public List<WhisperSegment> call() {
                 if (ptr == 0L) {
                     throw new IllegalStateException();
                 }

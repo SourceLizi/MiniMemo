@@ -7,8 +7,8 @@ import androidx.lifecycle.LiveData;
 import java.util.List;
 
 public class MemoRepository {
-    private MemoDao mMemoDao;
-    private LiveData<List<MemoData>> mAllMemos;
+    private final MemoDao mMemoDao;
+    private final LiveData<List<MemoData>> mAllMemos;
 
     public MemoRepository(Application application) {
         AppDatabase db = AppDatabase.getDatabase(application);
@@ -37,24 +37,18 @@ public class MemoRepository {
     // You must call this on a non-UI thread or your app will throw an exception. Room ensures
     // that you're not doing any long running operations on the main thread, blocking the UI.
     public void insert(MemoData m) {
-        AppDatabase.databaseWriteExecutor.execute(() -> {
-            mMemoDao.insertAll(m);
-        });
+        AppDatabase.databaseWriteExecutor.execute(() -> mMemoDao.insertAll(m));
     }
 
     // You must call this on a non-UI thread or your app will throw an exception. Room ensures
     // that you're not doing any long running operations on the main thread, blocking the UI.
     public void update(MemoData m) {
-        AppDatabase.databaseWriteExecutor.execute(() -> {
-            mMemoDao.update(m);
-        });
+        AppDatabase.databaseWriteExecutor.execute(() -> mMemoDao.update(m));
     }
 
     // You must call this on a non-UI thread or your app will throw an exception. Room ensures
     // that you're not doing any long running operations on the main thread, blocking the UI.
     public void deleteById(long id) {
-        AppDatabase.databaseWriteExecutor.execute(() -> {
-            mMemoDao.deleteById(id);
-        });
+        AppDatabase.databaseWriteExecutor.execute(() -> mMemoDao.deleteById(id));
     }
 }

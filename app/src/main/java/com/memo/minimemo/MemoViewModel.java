@@ -20,7 +20,7 @@ import com.memo.minimemo.transcribe.WhisperService;
 import java.util.List;
 
 public class MemoViewModel extends AndroidViewModel {
-    private MemoRepository memoRepository;
+    private final MemoRepository memoRepository;
     private final LiveData<List<MemoData>> mAllMemo;
     private LiveData<List<MemoData>> searchResult;
     private final MemoListAdapter adapter;
@@ -29,7 +29,7 @@ public class MemoViewModel extends AndroidViewModel {
     private FragmentContentBinding content_binding;
     private MemoData currEditing;
 
-    private WhisperService service;
+    private final WhisperService service;
     private AudioRecord audioRecord = null;
 
     public WhisperService getWhisperService(){

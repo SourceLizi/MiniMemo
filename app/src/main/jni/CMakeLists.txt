@@ -11,6 +11,7 @@ set(SOURCE_FILES
     ${WHISPER_LIB_DIR}/ggml/src/ggml-alloc.c
     ${WHISPER_LIB_DIR}/ggml/src/ggml-backend.cpp
     ${WHISPER_LIB_DIR}/ggml/src/ggml-quants.c
+    ${WHISPER_LIB_DIR}/ggml/src/ggml-cpu.c
     ${WHISPER_LIB_DIR}/src/whisper.cpp
     ${CMAKE_SOURCE_DIR}/jni.c
     )
@@ -40,9 +41,10 @@ function(build_library target_name)
         target_compile_options(${target_name} PRIVATE -fvisibility=hidden -fvisibility-inlines-hidden)
         target_compile_options(${target_name} PRIVATE -ffunction-sections -fdata-sections)
 
-        #target_link_options(${target_name} PRIVATE -Wl,--gc-sections)
-        #target_link_options(${target_name} PRIVATE -Wl,--exclude-libs,ALL)
-        #target_link_options(${target_name} PRIVATE -flto)
+        target_link_options(${target_name} PRIVATE -Wl,--gc-sections)
+        target_link_options(${target_name} PRIVATE -Wl,--exclude-libs,ALL)
+        target_link_options(${target_name} PRIVATE -Wl,--strip-all)
+        target_link_options(${target_name} PRIVATE -flto)
     endif ()
 endfunction()
 

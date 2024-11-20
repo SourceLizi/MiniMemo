@@ -13,12 +13,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import java.io.File;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 
 public class WhisperService {
-    private boolean isLoad = false;
     private final ExecutorService executor;
 
     public static final String modelFilePath = "models/ggml-base-q5_1.bin";
@@ -79,7 +76,7 @@ public class WhisperService {
                     return null;
                 }
             } else {
-                Log.i("Whisper", "Error reading buffer, code=" + String.valueOf(real_size));
+                Log.i("Whisper", "Error reading buffer, code=" + (real_size));
                 return null;
             }
 

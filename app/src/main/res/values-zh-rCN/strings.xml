@@ -10,7 +10,7 @@
     <!-- Strings used for fragments for navigation -->
     <string name="list_title">备忘录</string>
     <string name="new_title">新建备忘录</string>
-    <string name="info_text">创建于%s | %d字</string>
+    <string name="info_text">创建于%s | %d个字符</string>
     <string name="empty_info_text">无数据</string>
     <string name="voice_permission_msg">语音识别需要授予权限</string>
     <string name="voice_permission_btn">授权</string>

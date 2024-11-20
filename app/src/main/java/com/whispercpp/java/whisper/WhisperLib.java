@@ -4,8 +4,6 @@ import android.content.res.AssetManager;
 import android.os.Build;
 import android.util.Log;
 
-import androidx.annotation.RequiresApi;
-
 import java.io.InputStream;
 
 

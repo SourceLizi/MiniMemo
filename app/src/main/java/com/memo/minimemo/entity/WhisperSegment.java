@@ -1,5 +1,7 @@
 package com.memo.minimemo.entity;
 
+import androidx.annotation.NonNull;
+
 /**
  * Created by litonglinux@qq.com on 10/21/2023_7:48 AM
  */
@@ -40,6 +42,7 @@ public class WhisperSegment {
     this.sentence = sentence;
   }
 
+  @NonNull
   @Override
   public String toString() {
     return "["+start+" --> "+end+"]:"+sentence;

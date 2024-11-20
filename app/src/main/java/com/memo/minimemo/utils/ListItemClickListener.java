@@ -10,8 +10,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 public abstract class ListItemClickListener extends RecyclerView.SimpleOnItemTouchListener {
 
-    private GestureDetectorCompat mGestureDetectorCompat;
-    private RecyclerView mRecyclerView;
+    private final GestureDetectorCompat mGestureDetectorCompat;
+    private final RecyclerView mRecyclerView;
 
     /**
      * 通过构造传入我们的RecyclerView,并初始化GestureDetectorCompat

@@ -219,17 +219,17 @@ Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
     UNUSED(thiz);
     struct whisper_context *context = (struct whisper_context *) context_ptr;
     struct callback_context cb_context = {};
+    jclass callClass = NULL;
     jfloat *audio_data_arr = (*env)->GetFloatArrayElements(env, audio_data, NULL);
     const jsize audio_data_length = (*env)->GetArrayLength(env, audio_data);
 
-    // The below adapted from the Objective-C iOS sample
     struct whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_BEAM_SEARCH);
     params.print_realtime = false;
     params.print_progress = false;
     params.print_timestamps = false;
     params.print_special = false;
     params.translate = false;
-
+    params.detect_language = false;
     if(language[0] != '\0' && language[1] != '\0'){
         params.language = language;
         if(language[0] == 'z' && language[1] == 'h'
@@ -241,6 +241,7 @@ Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
     }
 
     //params.n_threads = num_threads;
+    params.no_timestamps = true;
     params.offset_ms = 0;
     params.duration_ms = audio_data_length / 16;
     params.no_context = true;
@@ -260,22 +261,26 @@ Java_com_whispercpp_java_whisper_WhisperLib_fullTranscribe(
         cb_context.thiz = thiz;
         cb_context.call_back = new_seg_cb;
 
-        jclass callClass = (*env)->GetObjectClass(env,new_seg_cb);
+        callClass = (*env)->GetObjectClass(env,new_seg_cb);
         cb_context.call_method = (*env)->GetMethodID(env,callClass
                 ,"onNewSegment","(Ljava/lang/String;I)V");
 
         params.new_segment_callback = on_new_segment;
         params.new_segment_callback_user_data = &cb_context;
     }
-
     whisper_reset_timings(context);
 
     LOGI("About to run whisper_full, locale=%s-%s",language,country);
-    //int n_core = sysconf(_SC_NPROCESSORS_ONLN);
+
     if (whisper_full(context, params, audio_data_arr, audio_data_length) != 0) {
         LOGI("Failed to run the model");
-    } else {
-        whisper_print_timings(context);
+    }
+//    else {
+//        whisper_print_timings(context);
+//    }
+
+    if(callClass != NULL){
+        (*env)->DeleteLocalRef(env,callClass);
     }
     (*env)->ReleaseFloatArrayElements(env, audio_data, audio_data_arr, JNI_ABORT);
 }

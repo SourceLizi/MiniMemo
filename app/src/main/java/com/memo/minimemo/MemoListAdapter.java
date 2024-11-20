@@ -1,9 +1,6 @@
 package com.memo.minimemo;
 
-import android.util.Log;
-import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
@@ -12,7 +9,6 @@ import androidx.recyclerview.widget.ListAdapter;
 import com.memo.minimemo.db.MemoData;
 import com.memo.minimemo.view.MemoListViewHolder;
 
-import java.util.List;
 
 public class MemoListAdapter extends ListAdapter<MemoData, MemoListViewHolder> {
 

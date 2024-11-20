@@ -9,10 +9,10 @@
     <!-- Strings used for fragments for navigation -->
     <string name="list_title">Memo</string>
     <string name="new_title">New</string>
-    <string name="info_text">Created on %s | %d words</string>
+    <string name="info_text">Created on %s | %d characters</string>
     <string name="empty_info_text">No Data</string>
-    <string name="voice_permission_msg">"Permissions is required for voice recognition "</string>
+    <string name="voice_permission_msg">Permissions is required for voice recognition</string>
     <string name="voice_permission_btn">Grant</string>
     <string name="whisper_running_msg">Transcribe is running in background</string>
-    <string name="whisper_failed_msg">Failed to start voice r</string>
+    <string name="whisper_failed_msg">Failed to start voice recognition</string>
 </resources>

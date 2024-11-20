@@ -34,10 +34,9 @@ import com.memo.minimemo.db.MemoData;
 import com.memo.minimemo.transcribe.WhisperService;
 import com.whispercpp.java.whisper.WhisperLib;
 
-import java.io.File;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
+import java.text.DateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 
 
@@ -99,8 +98,10 @@ public class MemoContentView extends Fragment {
                                 activity.setDoneVisible(false);
                             }
 
-                            SimpleDateFormat format;
-                            format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                            DateFormat format;
+                            Locale locale = getResources().getConfiguration().getLocales().get(0);
+                            format = DateFormat.getDateTimeInstance(DateFormat.MEDIUM,DateFormat.MEDIUM
+                                    , locale);
                             String time_str = format.format(new Date(memoData.createTime));
                             binding.textInfo.setText(String.format(formatStr,time_str,memoData.content.length()));
                         }
@@ -146,8 +147,6 @@ public class MemoContentView extends Fragment {
 //                     binding.textContent.append(msg.obj.toString());
 //                 }
                  binding.buttonVoice.setEnabled(true);
-                 binding.textContent.setEnabled(true);
-                 binding.textTitle.setEnabled(true);
                  this.future_recog = null;
              }else if(msg.what == MSG_NEW_SEGMENT){
                  if (msg.obj != null) {
@@ -172,8 +171,6 @@ public class MemoContentView extends Fragment {
                      String msg_text = getResources().getString(R.string.whisper_failed_msg);
                      Snackbar.make(binding.getRoot(), msg_text, Snackbar.LENGTH_LONG).show();
                  }else{
-                     binding.textContent.setEnabled(false);
-                     binding.textTitle.setEnabled(false);
                      if(activity != null){
                          InputMethodManager imm = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
                          imm.hideSoftInputFromWindow(binding.textContent.getWindowToken(),0);
