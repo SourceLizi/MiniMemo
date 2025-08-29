@@ -11,6 +11,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 
 import com.memo.minimemo.databinding.FragmentContentBinding;
 import com.memo.minimemo.db.MemoData;
@@ -106,7 +107,12 @@ public class MemoViewModel extends AndroidViewModel {
                 searchResult.removeObservers(lifecycleOwner);
             if(mAllMemo.hasObservers())
                 mAllMemo.removeObservers(lifecycleOwner);
-            mAllMemo.observe(lifecycleOwner, this.adapter::submitList);
+            mAllMemo.observe(lifecycleOwner, new Observer<List<MemoData>>() {
+                @Override
+                public void onChanged(List<MemoData> memoData) {
+                    adapter.submitList(memoData);
+                }
+            });
         }
     }
 
@@ -120,7 +126,12 @@ public class MemoViewModel extends AndroidViewModel {
                 mAllMemo.removeObservers(lifecycleOwner);
             searchResult = memoRepository.searchString(s);
             if(this.adapter !=null){
-                searchResult.observe(lifecycleOwner, this.adapter::submitList);
+                searchResult.observe(lifecycleOwner, new Observer<List<MemoData>>() {
+                    @Override
+                    public void onChanged(List<MemoData> memoData) {
+                        adapter.submitList(memoData);
+                    }
+                });
             }
         }
     }

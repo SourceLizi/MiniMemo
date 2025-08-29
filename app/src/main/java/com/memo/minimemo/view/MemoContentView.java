@@ -34,6 +34,7 @@ import com.memo.minimemo.db.MemoData;
 import com.memo.minimemo.transcribe.WhisperService;
 import com.whispercpp.java.whisper.WhisperLib;
 
+import java.lang.ref.WeakReference;
 import java.text.DateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -57,6 +58,67 @@ public class MemoContentView extends Fragment {
     private static final int MSG_START_REC = 2;
     private static final int MSG_STOP_REC = 3;
     private static final int MSG_NEW_SEGMENT = 4;
+
+    static class TranscribeHandler extends Handler{
+        private final WeakReference<MemoContentView> _fragment;
+        private final WeakReference<MainActivity> _activity;
+        TranscribeHandler(MemoContentView f, MainActivity activity){
+            this._fragment = new WeakReference<>(f);
+            this._activity = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            MemoContentView frag = this._fragment.get();
+            MainActivity activity = this._activity.get();
+            if(frag == null || activity == null) return;
+            super.handleMessage(msg);
+            if (msg.what == MSG_TRANSCRIBE_DONE){
+                frag.binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
+//                 if (msg.obj != null) {
+//                     binding.textContent.append(msg.obj.toString());
+//                 }
+                frag.binding.buttonVoice.setEnabled(true);
+                frag.future_recog = null;
+            }else if(msg.what == MSG_NEW_SEGMENT){
+                if (msg.obj != null) {
+                    frag.binding.textContent.append(msg.obj.toString());
+                }
+            }
+            else if(msg.what == MSG_START_REC){
+                frag.binding.buttonVoice.setImageDrawable(frag.voice_on);
+            }else if(msg.what == MSG_STOP_REC){
+                frag.future_recog = frag.mViewModel.getWhisperService().transcribeSample(frag.audioRecord,
+                        new WhisperLib.callback_fn() {
+                            @Override
+                            public void onNewSegment(String new_seg, int seg_idx) {
+                                if(frag.handler != null){
+                                    Message.obtain(frag.handler,MSG_NEW_SEGMENT,new_seg).sendToTarget();
+                                }
+                            }
+                        });
+                if(frag.future_recog == null){
+                    frag.binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
+                    frag.binding.buttonVoice.setEnabled(true);
+                    String msg_text = frag.getResources().getString(R.string.whisper_failed_msg);
+                    Snackbar.make(frag.binding.getRoot(), msg_text, Snackbar.LENGTH_LONG).show();
+                }else{
+                    InputMethodManager imm = (InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(frag.binding.textContent.getWindowToken(),0);
+                    imm.hideSoftInputFromWindow(frag.binding.textTitle.getWindowToken(),0);
+                    frag.future_recog.thenAccept(result -> {
+                        if(frag.handler != null){
+                            //Log.i("Whisper", result);
+                            Message.obtain(frag.handler,MSG_TRANSCRIBE_DONE,result).sendToTarget();
+                        }
+                    });
+                    //binding.buttonVoice.setImageDrawable(voice_off);
+                    frag.binding.buttonVoice.setImageDrawable(frag.circularProgressDrawable);
+                    frag.binding.buttonVoice.setEnabled(false);
+                }
+            }
+        }
+    }
 
     @Override
     public View onCreateView(
@@ -140,57 +202,7 @@ public class MemoContentView extends Fragment {
         this.voice_on = AppCompatResources.getDrawable(context,R.drawable.ic_action_voice);
         this.audioRecord = mViewModel.getAudioRecord();
 
-         this.handler = new Handler(msg -> {
-             if (msg.what == MSG_TRANSCRIBE_DONE){
-                 binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
-//                 if (msg.obj != null) {
-//                     binding.textContent.append(msg.obj.toString());
-//                 }
-                 binding.buttonVoice.setEnabled(true);
-                 this.future_recog = null;
-             }else if(msg.what == MSG_NEW_SEGMENT){
-                 if (msg.obj != null) {
-                     binding.textContent.append(msg.obj.toString());
-                 }
-             }
-             else if(msg.what == MSG_START_REC){
-                 binding.buttonVoice.setImageDrawable(voice_on);
-             }else if(msg.what == MSG_STOP_REC){
-                 this.future_recog = mViewModel.getWhisperService().transcribeSample(audioRecord,
-                         new WhisperLib.callback_fn() {
-                     @Override
-                     public void onNewSegment(String new_seg, int seg_idx) {
-                         if(handler != null){
-                             Message.obtain(handler,MSG_NEW_SEGMENT,new_seg).sendToTarget();
-                         }
-                     }
-                 });
-                 if(this.future_recog == null){
-                     binding.buttonVoice.setImageResource(R.drawable.ic_action_voice_off);
-                     binding.buttonVoice.setEnabled(true);
-                     String msg_text = getResources().getString(R.string.whisper_failed_msg);
-                     Snackbar.make(binding.getRoot(), msg_text, Snackbar.LENGTH_LONG).show();
-                 }else{
-                     if(activity != null){
-                         InputMethodManager imm = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
-                         imm.hideSoftInputFromWindow(binding.textContent.getWindowToken(),0);
-                         imm.hideSoftInputFromWindow(binding.textTitle.getWindowToken(),0);
-                     }
-                     this.future_recog.thenAccept(result -> {
-                         if(handler != null){
-                             //Log.i("Whisper", result);
-                             Message.obtain(handler,MSG_TRANSCRIBE_DONE,result).sendToTarget();
-                         }
-                     });
-                     //binding.buttonVoice.setImageDrawable(voice_off);
-                     binding.buttonVoice.setImageDrawable(circularProgressDrawable);
-                     binding.buttonVoice.setEnabled(false);
-                 }
-
-             }
-            return true;
-        });
-
+        this.handler = new TranscribeHandler(this,activity);
 
         if(audioRecord != null){
             audioRecord.setNotificationMarkerPosition(WhisperService.audioSampleRate * WhisperService.audioMaxSec);
@@ -262,7 +274,8 @@ public class MemoContentView extends Fragment {
             mViewModel.getWhisperService().stopAll();
             Log.i("Whisper", "Cancelled running whisper");
         }
-
+        this.circularProgressDrawable.stop();
+        this.circularProgressDrawable = null;
         this.mViewModel.setContent_binding(null);
         this.mViewModel.setCurrEditing(null);
         binding = null;
